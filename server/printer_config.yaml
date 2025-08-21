@@ -1,0 +1,26 @@
+logging:
+  level: INFO
+  log_discovery: true
+  log_status_changes: true
+monitoring:
+  max_retries: 3
+  retry_connection: true
+  retry_delay: 5
+  status_check_interval: 30
+printer:
+  allowed_printers:
+  - EPSON L120 Series (Copy 1)
+  - EPSON L120 Series
+  auto_discovery: false
+  default_id: epson_l120_series
+  default_name: EPSON L120 Series
+  fallback_enabled: true
+  fallback_keywords:
+    - EPSON L120
+    - L120
+  refresh_interval: 300
+ui:
+  auto_refresh_status: true
+  refresh_interval_ui: 10
+  show_connection_status: true
+  show_visual_indicator: true

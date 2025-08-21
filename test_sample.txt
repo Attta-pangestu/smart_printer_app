@@ -1,0 +1,17 @@
+This is a test document for printer testing.
+
+Printer Sharing System Test
+============================
+
+This document is used to test the printing functionality of the printer sharing system.
+
+Features tested:
+- Basic text printing
+- Client-server communication
+- Print job submission
+
+Date: 2025-01-20
+System: Windows Printer Sharing
+Status: Testing in progress
+
+End of test document.

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Monitor - Printer Share Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .job-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #dee2e6;
+        }
+        .job-card:hover {
+            transform: translateY(-2px);
+        }
+        .job-pending {
+            border-left-color: #6c757d;
+        }
+        .job-processing {
+            border-left-color: #0d6efd;
+        }
+        .job-printing {
+            border-left-color: #fd7e14;
+        }
+        .job-completed {
+            border-left-color: #198754;
+        }
+        .job-failed {
+            border-left-color: #dc3545;
+        }
+        .job-cancelled {
+            border-left-color: #6c757d;
+        }
+        .job-paused {
+            border-left-color: #ffc107;
+        }
+        .progress-container {
+            position: relative;
+        }
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .auto-refresh {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .job-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .job-actions .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-print me-2"></i>
+                Printer Share Control
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link active" href="/static/jobs.html">Job Monitor</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-tasks me-2"></i>Job Monitor</h2>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="auto-refresh">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                                <label class="form-check-label" for="autoRefresh">
+                                    Auto Refresh (5s)
+                                </label>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-primary" onclick="refreshJobs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Queue Status -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">Queue Size</h5>
+                                <h3 id="queueSize">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-warning">Active Jobs</h5>
+                                <h3 id="activeJobs">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-success">Completed</h5>
+                                <h3 id="completedJobs">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5 class="card-title text-danger">Failed</h5>
+                                <h3 id="failedJobs">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jobs List -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Active Print Jobs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="jobsList">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Loading jobs...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail Modal -->
+    <div class="modal fade" id="jobDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Job Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="jobDetailContent">
+                    <!-- Job details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let refreshInterval;
+        let jobDetailModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            jobDetailModal = new bootstrap.Modal(document.getElementById('jobDetailModal'));
+            refreshJobs();
+            startAutoRefresh();
+        });
+
+        function startAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            
+            function updateRefresh() {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                }
+                
+                if (autoRefreshCheckbox.checked) {
+                    refreshInterval = setInterval(refreshJobs, 5000);
+                }
+            }
+            
+            autoRefreshCheckbox.addEventListener('change', updateRefresh);
+            updateRefresh();
+        }
+
+        async function refreshJobs() {
+            try {
+                const response = await fetch('/api/jobs/progress/all');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateQueueStatus(data.data.queue_status);
+                    updateJobsList(data.data.jobs);
+                } else {
+                    showError('Failed to load jobs');
+                }
+            } catch (error) {
+                console.error('Error fetching jobs:', error);
+                showError('Error connecting to server');
+            }
+        }
+
+        function updateQueueStatus(queueStatus) {
+            document.getElementById('queueSize').textContent = queueStatus.queue_size;
+            document.getElementById('activeJobs').textContent = queueStatus.active_jobs;
+            document.getElementById('completedJobs').textContent = queueStatus.completed_jobs;
+            document.getElementById('failedJobs').textContent = queueStatus.failed_jobs;
+        }
+
+        function updateJobsList(jobs) {
+            const jobsList = document.getElementById('jobsList');
+            
+            if (jobs.length === 0) {
+                jobsList.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No active jobs</p>
+                    </div>
+                `;
+                return;
+            }
+
+            jobsList.innerHTML = jobs.map(job => createJobCard(job)).join('');
+        }
+
+        function createJobCard(job) {
+            const statusClass = `job-${job.status.toLowerCase()}`;
+            const statusIcon = getStatusIcon(job.status);
+            const statusBadge = getStatusBadge(job.status);
+            
+            return `
+                <div class="card job-card ${statusClass} mb-3">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h6 class="card-title mb-1">
+                                    <i class="${statusIcon} me-2"></i>
+                                    Job #${job.job_id.substring(0, 8)}
+                                </h6>
+                                <p class="card-text text-muted mb-1">
+                                    <i class="fas fa-print me-1"></i> ${job.printer_id || 'Unknown Printer'}
+                                </p>
+                                <p class="card-text text-muted mb-0">
+                                    <i class="fas fa-clock me-1"></i> 
+                                    ${new Date(job.created_at).toLocaleString()}
+                                </p>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="progress-container">
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: ${job.progress_percentage}%" 
+                                             aria-valuenow="${job.progress_percentage}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="progress-text">
+                                        ${job.progress_percentage.toFixed(1)}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    ${job.pages_printed}/${job.total_pages} pages
+                                </small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                ${statusBadge}
+                                ${job.estimated_completion ? `
+                                    <small class="text-muted d-block mt-1">
+                                        ETA: ${new Date(job.estimated_completion).toLocaleTimeString()}
+                                    </small>
+                                ` : ''}
+                            </div>
+                            <div class="col-md-1">
+                                <div class="job-actions">
+                                    ${createJobActions(job)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createJobActions(job) {
+            let actions = [];
+            
+            if (job.can_pause) {
+                actions.push(`
+                    <button class="btn btn-warning btn-sm" onclick="pauseJob('${job.job_id}')" title="Pause">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                `);
+            }
+            
+            if (job.can_resume) {
+                actions.push(`
+                    <button class="btn btn-success btn-sm" onclick="resumeJob('${job.job_id}')" title="Resume">
+                        <i class="fas fa-play"></i>
+                    </button>
+                `);
+            }
+            
+            if (job.can_cancel) {
+                actions.push(`
+                    <button class="btn btn-danger btn-sm" onclick="cancelJob('${job.job_id}')" title="Cancel">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `);
+            }
+            
+            actions.push(`
+                <button class="btn btn-info btn-sm" onclick="showJobDetail('${job.job_id}')" title="Details">
+                    <i class="fas fa-info"></i>
+                </button>
+            `);
+            
+            return actions.join('');
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'pending': 'fas fa-clock',
+                'processing': 'fas fa-cog fa-spin',
+                'printing': 'fas fa-print',
+                'completed': 'fas fa-check-circle',
+                'failed': 'fas fa-exclamation-circle',
+                'cancelled': 'fas fa-ban',
+                'paused': 'fas fa-pause-circle'
+            };
+            return icons[status.toLowerCase()] || 'fas fa-question-circle';
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': '<span class="badge bg-secondary status-badge">Pending</span>',
+                'processing': '<span class="badge bg-primary status-badge">Processing</span>',
+                'printing': '<span class="badge bg-warning status-badge">Printing</span>',
+                'completed': '<span class="badge bg-success status-badge">Completed</span>',
+                'failed': '<span class="badge bg-danger status-badge">Failed</span>',
+                'cancelled': '<span class="badge bg-secondary status-badge">Cancelled</span>',
+                'paused': '<span class="badge bg-warning status-badge">Paused</span>'
+            };
+            return badges[status.toLowerCase()] || '<span class="badge bg-light status-badge">Unknown</span>';
+        }
+
+        async function pauseJob(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/pause`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('Job paused successfully');
+                    refreshJobs();
+                } else {
+                    showError(data.message || 'Failed to pause job');
+                }
+            } catch (error) {
+                showError('Error pausing job');
+            }
+        }
+
+        async function resumeJob(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/resume`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('Job resumed successfully');
+                    refreshJobs();
+                } else {
+                    showError(data.message || 'Failed to resume job');
+                }
+            } catch (error) {
+                showError('Error resuming job');
+            }
+        }
+
+        async function cancelJob(jobId) {
+            if (!confirm('Are you sure you want to cancel this job?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('Job cancelled successfully');
+                    refreshJobs();
+                } else {
+                    showError(data.message || 'Failed to cancel job');
+                }
+            } catch (error) {
+                showError('Error cancelling job');
+            }
+        }
+
+        async function showJobDetail(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const job = data.data;
+                    document.getElementById('jobDetailContent').innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Job Information</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>ID:</strong></td><td>${job.id}</td></tr>
+                                    <tr><td><strong>Title:</strong></td><td>${job.title}</td></tr>
+                                    <tr><td><strong>File:</strong></td><td>${job.file_name}</td></tr>
+                                    <tr><td><strong>Type:</strong></td><td>${job.file_type}</td></tr>
+                                    <tr><td><strong>Size:</strong></td><td>${(job.file_size / 1024).toFixed(1)} KB</td></tr>
+                                    <tr><td><strong>User:</strong></td><td>${job.user}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Print Settings</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Copies:</strong></td><td>${job.settings.copies}</td></tr>
+                                    <tr><td><strong>Color Mode:</strong></td><td>${job.settings.color_mode}</td></tr>
+                                    <tr><td><strong>Paper Size:</strong></td><td>${job.settings.paper_size}</td></tr>
+                                    <tr><td><strong>Orientation:</strong></td><td>${job.settings.orientation}</td></tr>
+                                    <tr><td><strong>Quality:</strong></td><td>${job.settings.quality}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Status & Progress</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Status:</strong></td><td>${getStatusBadge(job.status)}</td></tr>
+                                    <tr><td><strong>Progress:</strong></td><td>${job.progress_percentage.toFixed(1)}% (${job.pages_printed}/${job.total_pages} pages)</td></tr>
+                                    <tr><td><strong>Created:</strong></td><td>${new Date(job.created_at).toLocaleString()}</td></tr>
+                                    <tr><td><strong>Started:</strong></td><td>${job.started_at ? new Date(job.started_at).toLocaleString() : 'Not started'}</td></tr>
+                                    <tr><td><strong>Completed:</strong></td><td>${job.completed_at ? new Date(job.completed_at).toLocaleString() : 'Not completed'}</td></tr>
+                                    ${job.error_message ? `<tr><td><strong>Error:</strong></td><td class="text-danger">${job.error_message}</td></tr>` : ''}
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                    jobDetailModal.show();
+                } else {
+                    showError('Failed to load job details');
+                }
+            } catch (error) {
+                showError('Error loading job details');
+            }
+        }
+
+        function showSuccess(message) {
+            // Simple success notification
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+
+        function showError(message) {
+            // Simple error notification
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+            alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

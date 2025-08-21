@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Print Server Dashboard</title>
+    
+    <!-- PDF.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <!-- SheetJS for Excel support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Mammoth.js for Word support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --error-color: #dc2626;
+            --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background-gradient);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            height: calc(100vh - 40px);
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                max-height: none;
+                height: auto;
+            }
+        }
+
+        .main-panel {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 32px;
+            box-shadow: var(--card-shadow);
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .side-panel {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 32px;
+            text-align: center;
+            font-size: 2.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            color: #374151;
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 12px;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+            border-radius: 2px;
+        }
+
+        .printer-section {
+            margin-bottom: 32px;
+        }
+
+        .printer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .printer-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .printer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .printer-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            border-color: var(--primary-color);
+        }
+
+        .printer-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .printer-card.selected {
+            border-color: var(--primary-color);
+            background: linear-gradient(145deg, #dbeafe, #eff6ff);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
+        }
+
+        .printer-card.selected::before {
+            transform: scaleX(1);
+        }
+
+        .printer-name {
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: #1f2937;
+        }
+
+        .printer-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .printer-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .status-online::before {
+            background: #10b981;
+        }
+
+        .status-offline {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .status-offline::before {
+            background: #ef4444;
+        }
+
+        .status-busy {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
+        .status-busy::before {
+            background: #f59e0b;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .upload-preview-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .upload-column, .preview-column {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: var(--border-radius);
+            padding: 48px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: linear-gradient(145deg, #f8fafc, #ffffff);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: linear-gradient(145deg, #eff6ff, #dbeafe);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.15);
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary-color);
+            background: linear-gradient(145deg, #dbeafe, #bfdbfe);
+            transform: scale(1.02);
+            box-shadow: 0 16px 32px rgba(37, 99, 235, 0.2);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            background: linear-gradient(145deg, #f8fafc, #ffffff);
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .file-info h3 {
+            margin: 0 0 12px 0;
+            color: #1f2937;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .preview-container {
+            border: 2px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            height: 450px;
+            overflow: auto;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            color: #666;
+        }
+
+        .preview-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .preview-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+            border: 2px solid #e2e8f0;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border-radius: calc(var(--border-radius) / 2);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .btn-small:hover {
+            background: linear-gradient(145deg, #eff6ff, #dbeafe);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.15);
+        }
+
+        .btn-small:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .page-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 15px;
+            padding-left: 15px;
+            border-left: 1px solid #ddd;
+        }
+
+        #zoomLevel, #pageInfo {
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            margin: 6px;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.025em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn:disabled {
+            background: linear-gradient(135deg, #9ca3af, #6b7280);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn:disabled::before {
+            display: none;
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .btn-test:hover {
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-test:hover {
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .print-settings {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .setting-group input,
+        .setting-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .setting-group input:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .setting-group input[type="range"] {
+            width: calc(100% - 60px);
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .setting-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .advanced-settings {
+            border-top: 1px solid #eee;
+            padding-top: 25px;
+            margin-top: 25px;
+        }
+
+        .advanced-settings h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .margin-settings {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .margin-settings h4 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .margin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .margin-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .margin-item label {
+            min-width: 60px;
+            margin-bottom: 0;
+            font-size: 13px;
+        }
+
+        .margin-item input {
+            flex: 1;
+            padding: 8px;
+        }
+
+        .custom-paper {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+        }
+
+        .custom-paper h4 {
+            margin: 0 0 15px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+
+        .custom-paper-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .print-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #scaleValue {
+            display: inline-block;
+            min-width: 50px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .job-monitor {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .job-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 0 8px 8px 0;
+            transition: all 0.3s ease;
+        }
+
+        .job-item:hover {
+            background: #e9ecef;
+        }
+
+        .job-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .job-details {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .job-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .job-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .job-printing {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .job-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .job-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .test-print-section {
+            background: #f0f8ff;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .test-print-section h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .test-options {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding: 20px;
+            background: linear-gradient(145deg, #f8fafc, #ffffff);
+            border-radius: var(--border-radius);
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .quick-actions .btn {
+            margin: 0;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .control-group span {
+            min-width: 60px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-color);
+            background: #f8fafc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .upload-progress {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: var(--border-radius);
+            border: 1px solid #e2e8f0;
+        }
+
+        .upload-progress .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .upload-progress .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .upload-progress p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .printer-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .upload-preview-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .margin-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .custom-paper-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .print-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-panel">
+            <h1>🖨️ Professional Print Server</h1>
+            
+            <div id="alerts"></div>
+            
+            <!-- Quick Actions Section -->
+            <div class="quick-actions">
+                <button class="btn btn-test" onclick="submitTestPrint()" id="testPrintBtn">
+                    🧪 Test Print
+                </button>
+                <button class="btn" onclick="refreshPrinters()">
+                    🔄 Refresh Printers
+                </button>
+                <button class="btn" onclick="clearQueue()">
+                    🗑️ Clear Queue
+                </button>
+            </div>
+            
+            <!-- Printer Selection -->
+            <div class="printer-section">
+                <h2>📱 Pilih Printer</h2>
+                <div class="printer-grid" id="printerGrid">
+                    <!-- Printer cards will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- File Upload and Preview Section -->
+            <div class="upload-preview-section">
+                <div class="upload-column">
+                    <h2>📄 Upload Dokumen</h2>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+                         ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                        <div class="upload-icon">📁</div>
+                        <h3 style="margin: 16px 0 8px 0; color: #374151;">Pilih atau Drop File</h3>
+                        <p style="color: #6b7280; margin-bottom: 16px;">Drag & drop file di sini atau klik untuk browse</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; font-size: 0.875rem; color: #9ca3af;">
+                            <span>📄 PDF</span>
+                            <span>📊 Excel (XLS, XLSX)</span>
+                            <span>📝 Word (DOC, DOCX)</span>
+                            <span>🖼️ Images (JPG, PNG)</span>
+                            <span>📄 Text (TXT)</span>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" onchange="handleFileSelect(event)" 
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.tiff">
+                    
+                    <!-- Upload Progress -->
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="progressText">Uploading...</p>
+                    </div>
+                    
+                    <!-- File Info -->
+                    <div class="file-info" id="fileInfo" style="display: none;">
+                        <h3>📋 Informasi File</h3>
+                        <div id="fileDetails"></div>
+                    </div>
+                </div>
+                
+                <div class="preview-column">
+                    <h2>👁️ Preview Dokumen</h2>
+                    <div class="preview-container" id="previewContainer">
+                        <div class="preview-placeholder">
+                            <div class="preview-icon">📄</div>
+                            <h3 style="margin: 16px 0 8px 0; color: #374151;">Document Preview</h3>
+                            <p style="color: #6b7280;">Preview akan muncul setelah file dipilih</p>
+                            <div style="margin-top: 20px; font-size: 0.875rem; color: #9ca3af;">
+                                <p>✨ Fitur Preview:</p>
+                                <p>• PDF: Native preview dengan zoom</p>
+                                <p>• Excel: Konversi ke PDF untuk preview</p>
+                                <p>• Word: Konversi ke PDF untuk preview</p>
+                                <p>• Images: Preview langsung</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Controls -->
+                    <div class="preview-controls" id="previewControls" style="display: none;">
+                        <div class="control-group">
+                            <button class="btn-small" onclick="zoomOut()">🔍-</button>
+                            <span id="zoomLevel">100%</span>
+                            <button class="btn-small" onclick="zoomIn()">🔍+</button>
+                        </div>
+                        <div class="control-group">
+                            <button class="btn-small" onclick="prevPage()">⬅️ Prev</button>
+                            <span id="pageInfo">1 / 1</span>
+                            <button class="btn-small" onclick="nextPage()">Next ➡️</button>
+                        </div>
+                        <div class="control-group">
+                            <button class="btn-small" onclick="fitToWidth()">📐 Fit Width</button>
+                            <button class="btn-small" onclick="fitToPage()">📄 Fit Page</button>
+                            <button class="btn-small" onclick="downloadPDF()">💾 Download PDF</button>
+                        </div>
+                        <button class="btn-small" onclick="resetZoom()">↻</button>
+                        <div class="page-controls" id="pageControls" style="display: none;">
+                            <button class="btn-small" onclick="prevPage()">◀</button>
+                            <span id="pageInfo">1 / 1</span>
+                            <button class="btn-small" onclick="nextPage()">▶</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print Settings -->
+            <div class="print-settings" id="printSettings" style="display: none;">
+                <h2>⚙️ Pengaturan Cetak</h2>
+                
+                <!-- Basic Settings -->
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="copies">Jumlah Salinan:</label>
+                        <input type="number" id="copies" value="1" min="1" max="999">
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="colorMode">Mode Warna:</label>
+                        <select id="colorMode">
+                            <option value="color">Berwarna</option>
+                            <option value="grayscale">Grayscale</option>
+                            <option value="bw">Hitam Putih</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="paperSize">Ukuran Kertas:</label>
+                        <select id="paperSize">
+                            <option value="A4" selected>A4</option>
+                            <option value="A3">A3</option>
+                            <option value="A5">A5</option>
+                            <option value="Letter">Letter</option>
+                            <option value="Legal">Legal</option>
+                            <option value="Custom">Custom</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="orientation">Orientasi:</label>
+                        <select id="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="quality">Kualitas:</label>
+                        <select id="quality">
+                            <option value="draft">Draft</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="high">High</option>
+                            <option value="photo">Photo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="duplex">Duplex:</label>
+                        <select id="duplex">
+                            <option value="none" selected>Tidak</option>
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Advanced Settings -->
+                <div class="advanced-settings">
+                    <h3>🔧 Pengaturan Lanjutan</h3>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <label for="scale">Scale (%):</label>
+                            <input type="range" id="scale" min="25" max="400" value="100" oninput="updateScaleValue()">
+                            <span id="scaleValue">100%</span>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="pagesPerSheet">Halaman per Lembar:</label>
+                            <select id="pagesPerSheet">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                                <option value="6">6</option>
+                                <option value="9">9</option>
+                                <option value="16">16</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label for="pageRange">Range Halaman:</label>
+                            <input type="text" id="pageRange" placeholder="Contoh: 1-5,8,11-13">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="collate" checked>
+                                Collate (Susun)
+                            </label>
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="reverseOrder">
+                                Urutan Terbalik
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Margin Settings -->
+                    <div class="margin-settings">
+                        <h4>📏 Margin (inci)</h4>
+                        <div class="margin-grid">
+                            <div class="margin-item">
+                                <label for="marginTop">Atas:</label>
+                                <input type="number" id="marginTop" value="0.5" step="0.1" min="0" max="2">
+                            </div>
+                            <div class="margin-item">
+                                <label for="marginBottom">Bawah:</label>
+                                <input type="number" id="marginBottom" value="0.5" step="0.1" min="0" max="2">
+                            </div>
+                            <div class="margin-item">
+                                <label for="marginLeft">Kiri:</label>
+                                <input type="number" id="marginLeft" value="0.5" step="0.1" min="0" max="2">
+                            </div>
+                            <div class="margin-item">
+                                <label for="marginRight">Kanan:</label>
+                                <input type="number" id="marginRight" value="0.5" step="0.1" min="0" max="2">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Paper Size -->
+                    <div class="custom-paper" id="customPaper" style="display: none;">
+                        <h4>📐 Ukuran Kertas Custom (inci)</h4>
+                        <div class="custom-paper-grid">
+                            <div class="setting-group">
+                                <label for="customWidth">Lebar:</label>
+                                <input type="number" id="customWidth" step="0.1" min="1" max="50">
+                            </div>
+                            <div class="setting-group">
+                                <label for="customHeight">Tinggi:</label>
+                                <input type="number" id="customHeight" step="0.1" min="1" max="50">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="print-actions">
+                    <button class="btn btn-secondary" onclick="resetSettings()">↻ Reset</button>
+                    <button class="btn btn-primary" onclick="submitPrintJob()" id="printBtn" disabled>
+                        🖨️ Mulai Cetak
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="side-panel">
+            <h2>📊 Monitor Pekerjaan</h2>
+            <div class="job-monitor" id="jobMonitor">
+                <!-- Job items will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPrinter = null;
+        let selectedFile = null;
+        let printers = [];
+        let jobs = [];
+        
+        // Preview and zoom variables
+        let currentZoom = 100;
+        let currentPage = 1;
+        let totalPages = 1;
+        let uploadResult = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPrinters();
+            loadJobs();
+            
+            // Add event listeners
+            document.getElementById('paperSize').addEventListener('change', toggleCustomPaper);
+            
+            // Auto-refresh every 5 seconds
+            setInterval(() => {
+                loadJobs();
+                updatePrinterStatus();
+            }, 5000);
+        });
+
+        // Load available printers
+        async function loadPrinters() {
+            try {
+                const response = await fetch('/api/printers');
+                const data = await response.json();
+                
+                // Handle both array and object with printers property
+                printers = Array.isArray(data) ? data : (data.printers || []);
+                
+                displayPrinters();
+                populateTestPrinterSelect();
+            } catch (error) {
+                console.error('Error loading printers:', error);
+                showAlert('Gagal memuat daftar printer', 'error');
+            }
+        }
+
+        // Display printers in grid
+        function displayPrinters() {
+            const grid = document.getElementById('printerGrid');
+            grid.innerHTML = '';
+            
+            if (printers.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; color: #666;">Tidak ada printer yang tersedia</p>';
+                return;
+            }
+            
+            printers.forEach(printer => {
+                const card = document.createElement('div');
+                card.className = 'printer-card';
+                card.onclick = () => selectPrinter(printer);
+                
+                const statusClass = `status-${printer.status || 'offline'}`;
+                
+                card.innerHTML = `
+                    <div class="printer-name">${printer.name || printer.id}</div>
+                    <div class="printer-status ${statusClass}">${printer.status || 'offline'}</div>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        Driver: ${printer.driver_name || 'Unknown'}
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // Populate test printer select dropdown
+        function populateTestPrinterSelect() {
+            const select = document.getElementById('testPrinterSelect');
+            
+            // Clear existing options except the first one
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+            
+            printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer.id;
+                option.textContent = `${printer.name || printer.id} (${printer.status || 'offline'})`;
+                
+                // Disable if printer is offline
+                if (printer.status !== 'online') {
+                    option.disabled = true;
+                    option.textContent += ' - Offline';
+                }
+                
+                select.appendChild(option);
+            });
+        }
+
+        // Select printer
+        function selectPrinter(printer) {
+            // Remove previous selection
+            document.querySelectorAll('.printer-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selection to clicked card
+            event.target.closest('.printer-card').classList.add('selected');
+            
+            selectedPrinter = printer;
+            updatePrintButton();
+        }
+
+        // Update printer status
+        async function updatePrinterStatus() {
+            for (let printer of printers) {
+                try {
+                    const response = await fetch(`/api/printers/${printer.id}/status`);
+                    const status = await response.json();
+                    printer.status = status.status;
+                } catch (error) {
+                    console.error(`Error updating status for printer ${printer.id}:`, error);
+                }
+            }
+            displayPrinters();
+            populateTestPrinterSelect();
+        }
+
+        // File handling and preview
+        let currentZoom = 100;
+        let currentPage = 1;
+        let totalPages = 1;
+        let previewContent = null;
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                showFileInfo(file);
+                generatePreview(file);
+                document.getElementById('printSettings').style.display = 'block';
+                updatePrintButton();
+                showAlert(`File dipilih: ${file.name}`, 'success');
+            }
+        }
+
+        // Handle drag and drop
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const uploadArea = event.target.closest('.upload-area');
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const uploadArea = event.target.closest('.upload-area');
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const uploadArea = event.target.closest('.upload-area');
+            uploadArea.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                document.getElementById('fileInput').files = files;
+                showFileInfo(file);
+                generatePreview(file);
+                document.getElementById('printSettings').style.display = 'block';
+                updatePrintButton();
+                showAlert(`File dipilih: ${file.name}`, 'success');
+            }
+        }
+
+        function showFileInfo(file) {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileDetails = document.getElementById('fileDetails');
+            
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            const lastModified = new Date(file.lastModified).toLocaleString('id-ID');
+            
+            fileDetails.innerHTML = `
+                <div><strong>Nama:</strong> ${file.name}</div>
+                <div><strong>Ukuran:</strong> ${sizeInMB} MB</div>
+                <div><strong>Tipe:</strong> ${file.type || 'Unknown'}</div>
+                <div><strong>Dimodifikasi:</strong> ${lastModified}</div>
+            `;
+            
+            fileInfo.style.display = 'block';
+        }
+
+        async function generatePreview(file) {
+            // Show immediate preview first
+            showImmediatePreview(file);
+            
+            // Then upload and process for advanced features
+            await uploadAndProcessFile(file);
+        }
+        
+        function showImmediatePreview(file) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            const pageControls = document.getElementById('pageControls');
+            
+            // Reset preview state
+            currentZoom = 100;
+            currentPage = 1;
+            totalPages = 1;
+            
+            // Generate immediate preview based on file type
+            if (file.type.startsWith('image/')) {
+                // Image preview - show immediately
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContainer.innerHTML = `
+                        <img id="previewImage" src="${e.target.result}" 
+                             style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                    `;
+                    previewControls.style.display = 'flex';
+                    pageControls.style.display = 'none';
+                    updateZoomDisplay();
+                };
+                reader.readAsDataURL(file);
+            } else if (file.type === 'application/pdf') {
+                // PDF preview - show loading, will be replaced after upload
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+                        <div><strong>PDF: ${file.name}</strong></div>
+                        <div style="color: #666; margin-top: 10px;">Memuat preview PDF...</div>
+                        <div style="color: #007bff; margin-top: 10px; font-weight: bold;">Ukuran: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                    </div>
+                `;
+            } else if (file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                // Excel preview
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                        <div><strong>Excel: ${file.name}</strong></div>
+                        <div style="color: #666; margin-top: 10px;">Memuat preview spreadsheet...</div>
+                        <div style="color: #007bff; margin-top: 10px; font-weight: bold;">Ukuran: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                    </div>
+                `;
+            } else if (file.type.includes('document') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                // Word preview
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
+                        <div><strong>Word: ${file.name}</strong></div>
+                        <div style="color: #666; margin-top: 10px;">Memuat preview dokumen...</div>
+                        <div style="color: #007bff; margin-top: 10px; font-weight: bold;">Ukuran: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                    </div>
+                `;
+            } else if (file.type.startsWith('text/')) {
+                // Text file preview - show immediately
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const lines = content.split('\n').length;
+                    
+                    previewContainer.innerHTML = `
+                        <div style="position: relative; width: 100%; height: 100%;">
+                            <div style="position: absolute; top: 5px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">
+                                ${lines} baris
+                            </div>
+                            <div id="textPreview" style="padding: 20px; text-align: left; white-space: pre-wrap; 
+                                 font-family: monospace; font-size: 12px; line-height: 1.4; overflow: auto; 
+                                 width: 100%; height: 100%; box-sizing: border-box;">
+                                ${content}
+                            </div>
+                        </div>
+                    `;
+                    previewControls.style.display = 'flex';
+                    pageControls.style.display = 'none';
+                    updateZoomDisplay();
+                };
+                reader.readAsText(file);
+            } else {
+                // Generic file preview
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+                        <div><strong>File: ${file.name}</strong></div>
+                        <div style="color: #666; margin-top: 10px;">File siap untuk dicetak</div>
+                        <div style="color: #007bff; margin-top: 10px; font-weight: bold;">Ukuran: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                        <div style="color: #999; margin-top: 5px; font-size: 12px;">Preview akan tersedia setelah upload</div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function uploadAndProcessFile(file) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            const pageControls = document.getElementById('pageControls');
+            
+            try {
+                // Show upload progress for non-image files
+                if (!file.type.startsWith('image/') && !file.type.startsWith('text/')) {
+                    const currentContent = previewContainer.innerHTML;
+                    previewContainer.innerHTML = currentContent.replace(
+                        'Memuat preview',
+                        'Mengupload dan memproses'
+                    );
+                }
+                
+                // Upload file to server for processing
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const uploadResponse = await fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadResult = await uploadResponse.json();
+                
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadResult.detail || 'Gagal upload file');
+                }
+                
+                // Update file info with server response
+                updateFileInfoFromServer(uploadResult);
+                
+                // Generate advanced preview based on file type
+                if (file.type === 'application/pdf') {
+                    // PDF preview with PDF.js
+                    await loadPDFPreview(uploadResult.file_name || uploadResult.filename, file.name);
+                } else if (file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    // Excel preview - convert to PDF first
+                    await loadExcelPreview(uploadResult, file.name);
+                } else if (file.type.includes('document') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                    // Word preview - convert to PDF first
+                    await loadWordPreview(uploadResult, file.name);
+                } else if (!file.type.startsWith('image/') && !file.type.startsWith('text/')) {
+                    // Generic document preview
+                    await loadGenericPreview(uploadResult, file.name);
+                }
+                
+                // Store upload result for later use
+                selectedFile.uploadResult = uploadResult;
+                
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                
+                // Show error in preview area
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                        <div><strong>Error Upload</strong></div>
+                        <div style="color: #dc3545; margin-top: 10px;">${error.message}</div>
+                        <div style="color: #999; margin-top: 15px; font-size: 12px;">File masih dapat dicetak dengan pengaturan dasar</div>
+                        <div style="color: #007bff; margin-top: 10px; font-weight: bold;">Ukuran: ${(file.size / (1024 * 1024)).toFixed(2)} MB</div>
+                    </div>
+                `;
+                previewControls.style.display = 'none';
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateFileInfoFromServer(uploadResult) {
+            const fileDetails = document.getElementById('fileDetails');
+            const currentContent = fileDetails.innerHTML;
+            
+            // Add server-provided information
+            let additionalInfo = '';
+            if (uploadResult.pages_detected && uploadResult.pages_detected > 0) {
+                additionalInfo += `<div><strong>Halaman:</strong> ${uploadResult.pages_detected}</div>`;
+            }
+            if (uploadResult.file_type) {
+                additionalInfo += `<div><strong>Format:</strong> ${uploadResult.file_type}</div>`;
+            }
+            if (uploadResult.upload_path) {
+                additionalInfo += `<div><strong>Status:</strong> <span style="color: #28a745;">✓ Berhasil diupload</span></div>`;
+            }
+            
+            fileDetails.innerHTML = currentContent + additionalInfo;
+        }
+
+        // Preview controls
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom + 25, 400);
+            applyZoom();
+        }
+
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom - 25, 25);
+            applyZoom();
+        }
+
+        function resetZoom() {
+            currentZoom = 100;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const previewImage = document.getElementById('previewImage');
+            const textPreview = document.getElementById('textPreview');
+            
+            if (previewImage) {
+                previewImage.style.transform = `scale(${currentZoom / 100})`;
+                previewImage.style.transformOrigin = 'center center';
+            }
+            
+            if (textPreview) {
+                textPreview.style.fontSize = `${12 * (currentZoom / 100)}px`;
+            }
+            
+            updateZoomDisplay();
+        }
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = `${currentZoom}%`;
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updatePageDisplay();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                updatePageDisplay();
+            }
+        }
+
+        function updatePageDisplay() {
+            document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+        }
+
+        // Settings management
+        function updateScaleValue() {
+            const scale = document.getElementById('scale').value;
+            document.getElementById('scaleValue').textContent = `${scale}%`;
+        }
+
+        function resetSettings() {
+            // Reset all form values to defaults
+            document.getElementById('copies').value = 1;
+            document.getElementById('colorMode').value = 'color';
+            document.getElementById('paperSize').value = 'A4';
+            document.getElementById('orientation').value = 'portrait';
+            document.getElementById('quality').value = 'normal';
+            document.getElementById('duplex').value = 'none';
+            document.getElementById('scale').value = 100;
+            document.getElementById('pagesPerSheet').value = 1;
+            document.getElementById('pageRange').value = '';
+            document.getElementById('collate').checked = true;
+            document.getElementById('reverseOrder').checked = false;
+            document.getElementById('marginTop').value = 0.5;
+            document.getElementById('marginBottom').value = 0.5;
+            document.getElementById('marginLeft').value = 0.5;
+            document.getElementById('marginRight').value = 0.5;
+            document.getElementById('customWidth').value = '';
+            document.getElementById('customHeight').value = '';
+            
+            updateScaleValue();
+            toggleCustomPaper();
+            showAlert('Pengaturan telah direset', 'info');
+        }
+
+        function toggleCustomPaper() {
+            const paperSize = document.getElementById('paperSize').value;
+            const customPaper = document.getElementById('customPaper');
+            
+            if (paperSize === 'Custom') {
+                customPaper.style.display = 'block';
+            } else {
+                customPaper.style.display = 'none';
+            }
+        }
+
+        // Update print button state
+        function updatePrintButton() {
+            const printBtn = document.getElementById('printBtn');
+            printBtn.disabled = !(selectedPrinter && selectedFile);
+        }
+
+        // Submit test print job
+        async function submitTestPrint() {
+            const testBtn = document.getElementById('testPrintBtn');
+            const printerSelect = document.getElementById('testPrinterSelect');
+            
+            try {
+                testBtn.disabled = true;
+                testBtn.textContent = '⏳ Mengirim Test Print...';
+                
+                const formData = new FormData();
+                
+                // Add printer_id if selected
+                if (printerSelect.value) {
+                    formData.append('printer_id', printerSelect.value);
+                }
+                
+                formData.append('user', 'dashboard_user');
+                
+                const response = await fetch('/api/jobs/test-print', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert(`✅ ${result.message}`, 'success');
+                    loadJobs(); // Refresh job list
+                } else {
+                    throw new Error(result.detail || 'Gagal mengirim test print');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting test print:', error);
+                showAlert(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = '🖨️ Kirim Test Print';
+            }
+        }
+
+        // Submit print job
+        async function submitPrintJob() {
+            if (!selectedPrinter || !selectedFile) {
+                showAlert('Pilih printer dan file terlebih dahulu', 'error');
+                return;
+            }
+            
+            try {
+                let uploadResult;
+                
+                // Check if file was already uploaded during preview
+                if (selectedFile.uploadResult) {
+                    uploadResult = selectedFile.uploadResult;
+                } else {
+                    // Upload file if not already uploaded
+                    const formData = new FormData();
+                    formData.append('file', selectedFile);
+                    
+                    const uploadResponse = await fetch('/api/files/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    uploadResult = await uploadResponse.json();
+                    
+                    if (!uploadResponse.ok) {
+                        throw new Error(uploadResult.detail || 'Gagal upload file');
+                    }
+                }
+                
+                // Collect all print settings
+                const printSettings = {
+                    copies: parseInt(document.getElementById('copies').value) || 1,
+                    color_mode: document.getElementById('colorMode').value,
+                    paper_size: document.getElementById('paperSize').value,
+                    orientation: document.getElementById('orientation').value,
+                    quality: document.getElementById('quality').value,
+                    duplex: document.getElementById('duplex').value,
+                    scale: parseInt(document.getElementById('scale').value) || 100,
+                    pages_per_sheet: parseInt(document.getElementById('pagesPerSheet').value) || 1,
+                    page_range: document.getElementById('pageRange').value || '',
+                    collate: document.getElementById('collate').checked,
+                    reverse_order: document.getElementById('reverseOrder').checked,
+                    margins: {
+                        top: parseFloat(document.getElementById('marginTop').value) || 0.5,
+                        bottom: parseFloat(document.getElementById('marginBottom').value) || 0.5,
+                        left: parseFloat(document.getElementById('marginLeft').value) || 0.5,
+                        right: parseFloat(document.getElementById('marginRight').value) || 0.5
+                    }
+                };
+
+                // Add custom paper size if selected
+                if (printSettings.paper_size === 'Custom') {
+                    const customWidth = document.getElementById('customWidth').value;
+                    const customHeight = document.getElementById('customHeight').value;
+                    
+                    if (!customWidth || !customHeight) {
+                        showAlert('Harap isi ukuran kertas kustom', 'error');
+                        return;
+                    }
+                    
+                    printSettings.custom_paper = {
+                        width: parseFloat(customWidth),
+                        height: parseFloat(customHeight)
+                    };
+                }
+                
+                // Submit print job with all settings
+                const jobData = {
+                    printer_id: selectedPrinter.id,
+                    file_id: uploadResult.file_id,
+                    settings: printSettings
+                };
+                
+                const jobResponse = await fetch('/api/jobs/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(jobData)
+                });
+                
+                const jobResult = await jobResponse.json();
+                
+                if (jobResponse.ok) {
+                    showAlert('Pekerjaan cetak berhasil dikirim!', 'success');
+                    loadJobs();
+                    
+                    // Reset form
+                    resetForm();
+                } else {
+                    throw new Error(jobResult.detail || 'Gagal mengirim pekerjaan cetak');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting print job:', error);
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function resetForm() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('printSettings').style.display = 'none';
+            document.getElementById('fileInfo').style.display = 'none';
+            resetPreview();
+            updatePrintButton();
+        }
+        
+        function resetPreview() {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            
+            previewContainer.innerHTML = `
+                <div class="preview-placeholder">
+                    <div class="preview-icon">📄</div>
+                    <p>Preview akan muncul setelah file dipilih</p>
+                </div>
+            `;
+            
+            previewControls.style.display = 'none';
+            
+            // Reset zoom and page variables
+            currentZoom = 100;
+            currentPage = 1;
+            totalPages = 1;
+            window.currentPDF = null;
+        }
+        
+        function updateZoomDisplay() {
+            const zoomDisplay = document.getElementById('zoomValue');
+            if (zoomDisplay) {
+                zoomDisplay.textContent = `${currentZoom}%`;
+            }
+        }
+        
+        function updatePageDisplay() {
+            const pageDisplay = document.getElementById('pageInfo');
+            if (pageDisplay) {
+                pageDisplay.textContent = `${currentPage} / ${totalPages}`;
+            }
+        }
+
+        // Load and display jobs
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                const data = await response.json();
+                
+                jobs = Array.isArray(data) ? data : (data.jobs || []);
+                displayJobs();
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+            }
+        }
+
+        // Display jobs in monitor
+        function displayJobs() {
+            const monitor = document.getElementById('jobMonitor');
+            monitor.innerHTML = '';
+            
+            if (jobs.length === 0) {
+                monitor.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">Belum ada pekerjaan cetak</p>';
+                return;
+            }
+            
+            // Sort jobs by creation time (newest first)
+            const sortedJobs = [...jobs].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            
+            sortedJobs.forEach(job => {
+                const jobItem = document.createElement('div');
+                jobItem.className = 'job-item';
+                
+                const statusClass = `job-${job.status || 'pending'}`;
+                const progress = job.progress || 0;
+                
+                jobItem.innerHTML = `
+                    <div class="job-title">${job.title || job.file_name || 'Unknown Job'}</div>
+                    <div class="job-details">
+                        Printer: ${job.printer_id}<br>
+                        User: ${job.user || 'Unknown'}<br>
+                        ${job.created_at ? `Dibuat: ${new Date(job.created_at).toLocaleString('id-ID')}` : ''}
+                    </div>
+                    <div class="job-status ${statusClass}">${job.status || 'pending'}</div>
+                    ${progress > 0 ? `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div style="font-size: 0.8em; color: #666; margin-top: 5px;">${progress}% selesai</div>
+                    ` : ''}
+                `;
+                
+                monitor.appendChild(jobItem);
+            });
+        }
+
+        // Advanced Preview Functions
+        async function loadPDFPreview(filePath, fileName) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            
+            try {
+                // Load PDF with PDF.js
+                const loadingTask = pdfjsLib.getDocument(`/api/files/serve/${filePath}`);
+                const pdf = await loadingTask.promise;
+                
+                totalPages = pdf.numPages;
+                currentPage = 1;
+                
+                // Render first page
+                await renderPDFPage(pdf, currentPage);
+                
+                previewControls.style.display = 'flex';
+                updateZoomDisplay();
+                updatePageDisplay();
+                
+                // Store PDF reference for navigation
+                window.currentPDF = pdf;
+                
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #dc3545;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                        <div><strong>Error loading PDF</strong></div>
+                        <div style="margin-top: 10px;">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function renderPDFPage(pdf, pageNum) {
+            const page = await pdf.getPage(pageNum);
+            const scale = currentZoom / 100;
+            const viewport = page.getViewport({ scale });
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            await page.render(renderContext).promise;
+            
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.innerHTML = '';
+            previewContainer.appendChild(canvas);
+        }
+        
+        async function loadExcelPreview(uploadResult, fileName) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            
+            try {
+                // Request PDF conversion from server
+                const convertResponse = await fetch('/api/files/convert-to-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        file_path: uploadResult.file_name || uploadResult.filename,
+                        file_type: 'excel'
+                    })
+                });
+                
+                const convertResult = await convertResponse.json();
+                
+                if (convertResponse.ok && convertResult.pdf_path) {
+                    // Load converted PDF
+                    await loadPDFPreview(convertResult.pdf_path, fileName);
+                    showAlert('Excel berhasil dikonversi ke PDF untuk preview', 'success');
+                } else {
+                    throw new Error(convertResult.detail || 'Gagal konversi Excel');
+                }
+                
+            } catch (error) {
+                console.error('Error loading Excel:', error);
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                        <div><strong>Excel Document</strong></div>
+                        <div style="color: #666; margin-top: 10px;">${fileName}</div>
+                        <div style="color: #ffc107; margin-top: 10px;">Preview tidak tersedia</div>
+                        <div style="color: #999; margin-top: 5px; font-size: 12px;">File siap untuk dicetak</div>
+                    </div>
+                `;
+                previewControls.style.display = 'flex';
+            }
+        }
+        
+        async function loadWordPreview(uploadResult, fileName) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            
+            try {
+                // Request PDF conversion from server
+                const convertResponse = await fetch('/api/files/convert-to-pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        file_path: uploadResult.file_name || uploadResult.filename,
+                        file_type: 'word'
+                    })
+                });
+                
+                const convertResult = await convertResponse.json();
+                
+                if (convertResponse.ok && convertResult.pdf_path) {
+                    // Load converted PDF
+                    await loadPDFPreview(convertResult.pdf_path, fileName);
+                    showAlert('Word berhasil dikonversi ke PDF untuk preview', 'success');
+                } else {
+                    throw new Error(convertResult.detail || 'Gagal konversi Word');
+                }
+                
+            } catch (error) {
+                console.error('Error loading Word:', error);
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📝</div>
+                        <div><strong>Word Document</strong></div>
+                        <div style="color: #666; margin-top: 10px;">${fileName}</div>
+                        <div style="color: #ffc107; margin-top: 10px;">Preview tidak tersedia</div>
+                        <div style="color: #999; margin-top: 5px; font-size: 12px;">File siap untuk dicetak</div>
+                    </div>
+                `;
+                previewControls.style.display = 'flex';
+            }
+        }
+        
+        async function loadGenericPreview(uploadResult, fileName) {
+            const previewContainer = document.getElementById('previewContainer');
+            const previewControls = document.getElementById('previewControls');
+            
+            const fileExt = fileName.split('.').pop().toLowerCase();
+            const iconMap = {
+                'pdf': '📄', 'doc': '📝', 'docx': '📝',
+                'xls': '📊', 'xlsx': '📊',
+                'txt': '📄', 'rtf': '📄',
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️'
+            };
+            
+            const icon = iconMap[fileExt] || '📄';
+            
+            previewContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">${icon}</div>
+                    <div><strong>Document Ready</strong></div>
+                    <div style="color: #666; margin-top: 10px;">${fileName}</div>
+                    <div style="color: #28a745; margin-top: 10px; font-weight: bold;">Siap untuk dicetak</div>
+                    <div style="color: #999; margin-top: 5px; font-size: 12px;">File berhasil diupload</div>
+                </div>
+            `;
+            
+            previewControls.style.display = 'flex';
+        }
+        
+        // Enhanced preview controls
+        async function fitToWidth() {
+            if (window.currentPDF) {
+                const container = document.getElementById('previewContainer');
+                const containerWidth = container.clientWidth - 40; // Account for padding
+                
+                const page = await window.currentPDF.getPage(currentPage);
+                const viewport = page.getViewport({ scale: 1 });
+                
+                const scale = containerWidth / viewport.width;
+                currentZoom = Math.round(scale * 100);
+                
+                await renderPDFPage(window.currentPDF, currentPage);
+                updateZoomDisplay();
+            }
+        }
+        
+        async function fitToPage() {
+            if (window.currentPDF) {
+                const container = document.getElementById('previewContainer');
+                const containerWidth = container.clientWidth - 40;
+                const containerHeight = container.clientHeight - 40;
+                
+                const page = await window.currentPDF.getPage(currentPage);
+                const viewport = page.getViewport({ scale: 1 });
+                
+                const scaleX = containerWidth / viewport.width;
+                const scaleY = containerHeight / viewport.height;
+                const scale = Math.min(scaleX, scaleY);
+                
+                currentZoom = Math.round(scale * 100);
+                
+                await renderPDFPage(window.currentPDF, currentPage);
+                updateZoomDisplay();
+            }
+        }
+        
+        function downloadPDF() {
+            if (selectedFile) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(selectedFile);
+                link.download = selectedFile.name;
+                link.click();
+            }
+        }
+        
+        // Enhanced navigation
+        async function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                if (window.currentPDF) {
+                    await renderPDFPage(window.currentPDF, currentPage);
+                }
+                updatePageDisplay();
+            }
+        }
+        
+        async function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                if (window.currentPDF) {
+                    await renderPDFPage(window.currentPDF, currentPage);
+                }
+                updatePageDisplay();
+            }
+        }
+        
+        async function zoomIn() {
+            if (currentZoom < 400) {
+                currentZoom += 25;
+                if (window.currentPDF) {
+                    await renderPDFPage(window.currentPDF, currentPage);
+                }
+                updateZoomDisplay();
+            }
+        }
+        
+        async function zoomOut() {
+            if (currentZoom > 25) {
+                currentZoom -= 25;
+                if (window.currentPDF) {
+                    await renderPDFPage(window.currentPDF, currentPage);
+                }
+                updateZoomDisplay();
+            }
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts');
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertsContainer.appendChild(alert);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# Printer Sharing System Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  debug: true
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+
+printer:
+  discovery:
+    enabled: true
+    timeout: 30
+    scan_interval: 60
+  default_settings:
+    color_mode: "color"  # color, grayscale, bw
+    copies: 1
+    paper_size: "A4"
+    orientation: "portrait"  # portrait, landscape
+    quality: "normal"  # draft, normal, high
+    duplex: false
+
+network:
+  discovery_port: 5353
+  service_name: "_printer-share._tcp.local."
+  broadcast_interval: 30
+
+logging:
+  level: "INFO"
+  file: "logs/printer_share.log"
+  max_size: "10MB"
+  backup_count: 5
+
+security:
+  enable_auth: false
+  api_key: null
+  allowed_ips: []
+
+storage:
+  temp_dir: "temp"
+  job_history: "data/jobs.db"
+  max_file_size: "50MB"

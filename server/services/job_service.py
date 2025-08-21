@@ -3,6 +3,8 @@ import uuid
 import asyncio
 import win32print
 import win32api
+import time
+import subprocess
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
@@ -86,7 +88,8 @@ class JobService:
         # Masukkan ke queue
         self._job_queue.put(job.id)
         
-        logger.info(f"Job {job.id} submitted for printer {printer_id}")
+        # Log aktivitas detail
+        logger.info(f"PRINT JOB SUBMITTED - ID: {job.id}, File: {file_info['name']}, Type: {file_info['type']}, Printer: {printer_id}, User: {user or 'anonymous'}, Copies: {settings.copies}, Settings: {settings}")
         return job
     
     def get_job(self, job_id: str) -> Optional[PrintJob]:
@@ -154,7 +157,7 @@ class JobService:
                 raise ValueError(f"Printer {printer_id} tidak ditemukan")
         else:
             # Cari printer default atau yang online
-            printers = self.printer_service.get_printers()
+            printers = self.printer_service.get_all_printers()
             
             # Coba cari printer default terlebih dahulu
             for printer in printers:
@@ -178,11 +181,11 @@ class JobService:
         # Buat konten test page
         test_content = self._create_test_page_content(target_printer)
         
-        # Simpan test page ke file temporary
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
-            f.write(test_content)
-            test_file_path = f.name
+        # Simpan test page ke file temporary menggunakan file_service
+        test_file_path = self.file_service.create_temp_file(
+            test_content.encode('utf-8'), 
+            extension='.txt'
+        )
         
         try:
             # Buat job test print
@@ -453,6 +456,22 @@ printer berfungsi dengan baik.
         
         logger.info("Job worker loop stopped")
     
+    def _cleanup_temp_file(self, job: PrintJob):
+        """Hapus file temporary setelah proses cetak selesai"""
+        try:
+            if job.file_path and os.path.exists(job.file_path):
+                # Pastikan file berada di temp directory
+                temp_dir = os.path.abspath(self.file_service.temp_dir)
+                file_path = os.path.abspath(job.file_path)
+                
+                if file_path.startswith(temp_dir):
+                    os.unlink(job.file_path)
+                    logger.info(f"Temporary file {job.file_path} deleted successfully")
+                else:
+                    logger.warning(f"File {job.file_path} is not in temp directory, skipping deletion")
+        except Exception as e:
+            logger.error(f"Error deleting temporary file {job.file_path}: {e}")
+    
     def _process_job(self, job: PrintJob):
         """Process single job with fallback printer support"""
         try:
@@ -497,7 +516,8 @@ printer berfungsi dengan baik.
                 job.progress_percentage = 100.0
                 job.completed_at = datetime.now()
                 self._completed_jobs += 1
-                logger.info(f"Job {job.id} completed successfully on printer {actual_printer_id}")
+                duration = (job.completed_at - job.started_at).total_seconds()
+                logger.info(f"PRINT JOB COMPLETED - ID: {job.id}, Printer: {actual_printer_id}, Duration: {duration:.2f}s, Pages: {job.total_pages}")
             else:
                 raise Exception("Printing failed")
                 
@@ -506,7 +526,11 @@ printer berfungsi dengan baik.
             job.error_message = str(e)
             job.completed_at = datetime.now()
             self._failed_jobs += 1
-            logger.error(f"Job {job.id} failed: {e}")
+            duration = (job.completed_at - job.started_at).total_seconds() if job.started_at else 0
+            logger.error(f"PRINT JOB FAILED - ID: {job.id}, Error: {e}, Duration: {duration:.2f}s")
+        finally:
+            # Cleanup: hapus file temporary setelah proses cetak selesai
+            self._cleanup_temp_file(job)
     
     def _print_file(self, job: PrintJob, printer: Printer) -> bool:
         """Print file ke printer"""
@@ -530,21 +554,172 @@ printer berfungsi dengan baik.
             return False
     
     def _print_pdf(self, job: PrintJob, printer: Printer) -> bool:
-        """Print PDF file"""
-        # Untuk PDF, kita bisa menggunakan Adobe Reader atau SumatraPDF
-        # Atau convert ke image dulu
+        """Print PDF file using enhanced PDF print solution"""
         try:
-            # Implementasi sederhana: gunakan default PDF viewer
+            import sys
+            import os
+            
+            # Add server directory to path for importing pdf_print_solution
+            server_dir = os.path.dirname(os.path.dirname(__file__))
+            if server_dir not in sys.path:
+                sys.path.insert(0, server_dir)
+            
+            from pdf_print_solution import PDFPrintSolution
+            
+            logger.info(f"Starting enhanced PDF print to {printer.name}")
+            
+            # Initialize PDF print solution
+            solution = PDFPrintSolution()
+            solution.printer_name = printer.name
+            
+            # Print PDF using enhanced solution
+            success, message = solution.print_pdf(job.file_path)
+            
+            if success:
+                logger.info(f"PDF printed successfully: {message}")
+                job.status = JobStatus.COMPLETED
+                job.pages_printed = 1  # Assume 1 page for now
+                job.completed_at = datetime.now()
+                return True
+            else:
+                logger.error(f"PDF printing failed: {message}")
+                job.status = JobStatus.FAILED
+                job.error_message = message
+                return False
+                
+        except ImportError as e:
+            logger.error(f"Failed to import PDF print solution: {e}")
+            # Fallback to original method if import fails
+            return self._print_pdf_fallback(job, printer)
+        except Exception as e:
+            logger.error(f"Enhanced PDF printing failed: {e}")
+            # Fallback to original method
+            return self._print_pdf_fallback(job, printer)
+    
+    def _print_pdf_fallback(self, job: PrintJob, printer: Printer) -> bool:
+        """Fallback PDF printing method using Windows API"""
+        try:
             import subprocess
+            import time
+            import win32print
+            import win32con
+            import win32api
+            import os
             
-            cmd = [
-                'powershell', '-Command',
-                f'Start-Process -FilePath "{job.file_path}" -Verb Print -WindowStyle Hidden'
-            ]
+            logger.info(f"Using fallback PDF printing method for {printer.name}")
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            return result.returncode == 0
+            # Try Windows API ShellExecute with specific printer
+            try:
+                # Set default printer temporarily
+                original_printer = win32print.GetDefaultPrinter()
+                win32print.SetDefaultPrinter(printer.name)
+                logger.info(f"Set default printer to: {printer.name}")
+                
+                # Use ShellExecute to print
+                result = win32api.ShellExecute(
+                    0,
+                    "print",
+                    job.file_path,
+                    None,
+                    ".",
+                    0
+                )
+                
+                # Restore original default printer
+                if original_printer:
+                    win32print.SetDefaultPrinter(original_printer)
+                    logger.info(f"Restored default printer to: {original_printer}")
+                
+                if result <= 32:  # ShellExecute error codes
+                    logger.error(f"ShellExecute failed with code: {result}")
+                    return False
+                
+                logger.info("Fallback Windows API print command executed successfully")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Fallback Windows API printing failed: {e}")
+                return False
             
+            # Give the system time to process the print command
+            logger.info("Waiting for print job to be queued...")
+            time.sleep(3)  # Wait 3 seconds for job to appear in queue
+            
+            # Monitor printer status until job is processed
+            max_wait_time = 60   # Maximum 1 minute wait
+            check_interval = 2   # Check every 2 seconds
+            elapsed_time = 0
+            job_seen_in_queue = False
+            
+            logger.info("Monitoring printer status for job completion...")
+            
+            while elapsed_time < max_wait_time:
+                try:
+                    printer_handle = win32print.OpenPrinter(printer.name)
+                    current_status = win32print.GetPrinter(printer_handle, 2)
+                    current_jobs_count = current_status.get('cJobs', 0)
+                    printer_status = current_status.get('Status', 0)
+                    win32print.ClosePrinter(printer_handle)
+                    
+                    logger.debug(f"Printer monitoring - Jobs: {current_jobs_count}, Initial: {initial_jobs_count}, Elapsed: {elapsed_time}s")
+                    
+                    # Check for printer errors first
+                    if printer_status & 0x00000002:  # PRINTER_STATUS_ERROR
+                        logger.error("Printer error detected")
+                        return False
+                    
+                    if printer_status & 0x00000400:  # PRINTER_STATUS_OFFLINE
+                        logger.error("Printer is offline")
+                        return False
+                    
+                    # Track if we've seen the job in the queue
+                    if current_jobs_count > initial_jobs_count:
+                        job_seen_in_queue = True
+                        progress = min(80, 20 + (elapsed_time / max_wait_time) * 60)
+                        self.update_job_progress(job.id, int(progress), 100)
+                        logger.info(f"Print job actively printing - Progress: {progress}%")
+                    elif job_seen_in_queue and current_jobs_count <= initial_jobs_count:
+                        # Job was in queue and now it's gone - completed
+                        self.update_job_progress(job.id, 100, 100)
+                        logger.info("Print job completed - Job processed and removed from queue")
+                        break
+                    elif elapsed_time > 10 and not job_seen_in_queue:
+                        # Job might have been processed too quickly to detect in queue
+                        # Or printer processed it immediately
+                        progress = min(90, 50 + (elapsed_time / max_wait_time) * 40)
+                        self.update_job_progress(job.id, int(progress), 100)
+                        logger.info(f"Print job likely processed - Progress: {progress}%")
+                        
+                        # If we've waited long enough and no errors, assume success
+                        if elapsed_time > 20:
+                            self.update_job_progress(job.id, 100, 100)
+                            logger.info("Print job assumed completed - No errors detected")
+                            break
+                    else:
+                        # Initial waiting period
+                        progress = min(20, (elapsed_time / 10) * 20)
+                        self.update_job_progress(job.id, int(progress), 100)
+                        logger.debug(f"Print job initializing - Progress: {progress}%")
+                    
+                    time.sleep(check_interval)
+                    elapsed_time += check_interval
+                    
+                except Exception as monitor_error:
+                    logger.warning(f"Error monitoring printer status: {monitor_error}")
+                    time.sleep(check_interval)
+                    elapsed_time += check_interval
+            
+            if elapsed_time >= max_wait_time:
+                logger.warning("Print monitoring timeout reached")
+                # Still return True as the print command succeeded
+                self.update_job_progress(job.id, 100, 100)
+            
+            logger.info(f"PDF print completed - Total monitoring time: {elapsed_time}s")
+            return True
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Print command timeout")
+            return False
         except Exception as e:
             logger.error(f"Error printing PDF: {e}")
             return False

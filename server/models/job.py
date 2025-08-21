@@ -79,6 +79,30 @@ class PrintSettings(BaseModel):
     # Custom paper size (if paper_size is CUSTOM)
     custom_paper: Optional[Dict[str, float]] = Field(None, description="Custom paper size with width and height in inches")
     
+    # Header/Footer settings
+    header_footer: Optional[Dict[str, Any]] = Field(
+        default_factory=lambda: {
+            "enabled": False,
+            "header_left": "",
+            "header_center": "",
+            "header_right": "",
+            "footer_left": "",
+            "footer_center": "",
+            "footer_right": ""
+        },
+        description="Header and footer settings"
+    )
+    
+    # Page break settings
+    page_breaks: Optional[Dict[str, Any]] = Field(
+        default_factory=lambda: {
+            "avoid_page_breaks": False,
+            "insert_manual_breaks": False,
+            "break_positions": ""
+        },
+        description="Page break control settings"
+    )
+    
     class Config:
         use_enum_values = True
 

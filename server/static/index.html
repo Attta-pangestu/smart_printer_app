@@ -319,7 +319,7 @@
         .preview-container {
             border: 2px solid #e2e8f0;
             border-radius: var(--border-radius);
-            height: 450px;
+            height: 850px;
             overflow: auto;
             background: linear-gradient(145deg, #ffffff, #f8fafc);
             display: flex;
@@ -857,6 +857,67 @@
                 flex-direction: column;
             }
         }
+
+        /* Selected indicator styling */
+        .selected-indicator {
+            background: linear-gradient(45deg, #059669, #10b981);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
+        }
+
+        /* Floating print button */
+        .floating-print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(45deg, #059669, #10b981);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .floating-print-btn:hover:not(:disabled) {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(5, 150, 105, 0.5);
+        }
+
+        .floating-print-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 15px rgba(156, 163, 175, 0.3);
+        }
+
+        .floating-print-btn:active:not(:disabled) {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        /* Printer image styling */
+        .printer-image {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .printer-image img {
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -868,6 +929,12 @@
             
             <!-- Quick Actions Section -->
             <div class="quick-actions">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <label for="testPrinterSelect">Test Printer:</label>
+                    <select id="testPrinterSelect" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd;">
+                        <option value="">Select Printer</option>
+                    </select>
+                </div>
                 <button class="btn btn-test" onclick="submitTestPrint()" id="testPrintBtn">
                     🧪 Test Print
                 </button>
@@ -1092,6 +1159,82 @@
                         </div>
                     </div>
                     
+                    <!-- Header/Footer Settings -->
+                    <div class="header-footer-settings">
+                        <h4>📄 Header & Footer</h4>
+                        <div class="settings-grid">
+                            <div class="setting-group">
+                                <label>
+                                    <input type="checkbox" id="enableHeader">
+                                    Aktifkan Header
+                                </label>
+                            </div>
+                            <div class="setting-group">
+                                <label>
+                                    <input type="checkbox" id="enableFooter">
+                                    Aktifkan Footer
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="header-content" id="headerContent" style="display: none;">
+                            <div class="setting-group">
+                                <label for="headerLeft">Header Kiri:</label>
+                                <input type="text" id="headerLeft" placeholder="Contoh: Judul Dokumen">
+                            </div>
+                            <div class="setting-group">
+                                <label for="headerCenter">Header Tengah:</label>
+                                <input type="text" id="headerCenter" placeholder="Contoh: Nama Perusahaan">
+                            </div>
+                            <div class="setting-group">
+                                <label for="headerRight">Header Kanan:</label>
+                                <input type="text" id="headerRight" placeholder="Contoh: Tanggal">
+                            </div>
+                        </div>
+                        
+                        <div class="footer-content" id="footerContent" style="display: none;">
+                            <div class="setting-group">
+                                <label for="footerLeft">Footer Kiri:</label>
+                                <input type="text" id="footerLeft" placeholder="Contoh: Halaman">
+                            </div>
+                            <div class="setting-group">
+                                <label for="footerCenter">Footer Tengah:</label>
+                                <input type="text" id="footerCenter" placeholder="Contoh: Confidential">
+                            </div>
+                            <div class="setting-group">
+                                <label for="footerRight">Footer Kanan:</label>
+                                <input type="text" id="footerRight" placeholder="Contoh: {page}/{total}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Page Break Settings -->
+                    <div class="page-break-settings">
+                        <h4>📑 Page Breaks</h4>
+                        <div class="settings-grid">
+                            <div class="setting-group">
+                                <label>
+                                    <input type="checkbox" id="avoidPageBreaks">
+                                    Hindari Page Break di Tengah Paragraf
+                                </label>
+                            </div>
+                            <div class="setting-group">
+                                <label>
+                                    <input type="checkbox" id="insertPageBreaks">
+                                    Sisipkan Page Break Manual
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="page-break-positions" id="pageBreakPositions" style="display: none;">
+                            <div class="setting-group">
+                                <label for="pageBreakAt">Page Break pada Halaman:</label>
+                                <input type="text" id="pageBreakAt" placeholder="Contoh: 2,5,8">
+                                <small style="color: #666;">Pisahkan dengan koma untuk multiple page breaks</small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Custom Paper Size -->
                     <div class="custom-paper" id="customPaper" style="display: none;">
                         <h4>📐 Ukuran Kertas Custom (inci)</h4>
@@ -1163,15 +1306,46 @@
                 
                 displayPrinters();
                 populateTestPrinterSelect();
+                
+                // Auto-select first online printer
+                autoSelectOnlinePrinter();
             } catch (error) {
                 console.error('Error loading printers:', error);
                 showAlert('Gagal memuat daftar printer', 'error');
             }
         }
 
+        // Refresh printers function
+        async function refreshPrinters() {
+            try {
+                showAlert('Memuat ulang daftar printer...', 'info');
+                await loadPrinters();
+                showAlert('Daftar printer berhasil dimuat ulang', 'success');
+            } catch (error) {
+                console.error('Error refreshing printers:', error);
+                showAlert('Gagal memuat ulang daftar printer', 'error');
+            }
+        }
+
+        // Auto-select first online printer
+        function autoSelectOnlinePrinter() {
+            if (!selectedPrinter && printers.length > 0) {
+                // Find first online printer
+                const onlinePrinter = printers.find(printer => printer.status === 'online');
+                if (onlinePrinter) {
+                    selectPrinter(onlinePrinter);
+                    showAlert(`Printer ${onlinePrinter.name} dipilih secara otomatis`, 'success');
+                }
+            }
+        }
+
         // Display printers in grid
         function displayPrinters() {
             const grid = document.getElementById('printerGrid');
+            if (!grid) {
+                console.error('printerGrid element not found');
+                return;
+            }
             grid.innerHTML = '';
             
             if (printers.length === 0) {
@@ -1182,13 +1356,21 @@
             printers.forEach(printer => {
                 const card = document.createElement('div');
                 card.className = 'printer-card';
-                card.onclick = () => selectPrinter(printer);
+                card.setAttribute('data-printer-id', printer.id);
+                if (selectedPrinter && selectedPrinter.id === printer.id) {
+                    card.classList.add('selected');
+                }
+                card.onclick = (event) => selectPrinter(printer, event);
                 
                 const statusClass = `status-${printer.status || 'offline'}`;
+                const isEpsonL120 = printer.name && printer.name.toLowerCase().includes('l120');
+                const printerImage = isEpsonL120 ? 'https://www.nesabamedia.com/wp-content/uploads/2021/07/Epson-L120-.png' : '';
                 
                 card.innerHTML = `
+                    ${printerImage ? `<div class="printer-image"><img src="${printerImage}" alt="${printer.name}" style="width: 120px; height: 120px; max-width: 100%; object-fit: contain; margin-bottom: 15px; border-radius: 8px;"></div>` : ''}
                     <div class="printer-name">${printer.name || printer.id}</div>
                     <div class="printer-status ${statusClass}">${printer.status || 'offline'}</div>
+                    ${selectedPrinter && selectedPrinter.id === printer.id ? '<div class="selected-indicator">✓ Dipilih</div>' : ''}
                     <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
                         Driver: ${printer.driver_name || 'Unknown'}
                     </div>
@@ -1201,6 +1383,10 @@
         // Populate test printer select dropdown
         function populateTestPrinterSelect() {
             const select = document.getElementById('testPrinterSelect');
+            if (!select) {
+                console.error('testPrinterSelect element not found');
+                return;
+            }
             
             // Clear existing options except the first one
             while (select.children.length > 1) {
@@ -1223,16 +1409,27 @@
         }
 
         // Select printer
-        function selectPrinter(printer) {
+        function selectPrinter(printer, event = null) {
+            console.log('selectPrinter called with:', printer);
+            
             // Remove previous selection
             document.querySelectorAll('.printer-card').forEach(card => {
                 card.classList.remove('selected');
             });
             
-            // Add selection to clicked card
-            event.target.closest('.printer-card').classList.add('selected');
+            // Add selection to clicked card or find card by printer id
+            if (event && event.target) {
+                event.target.closest('.printer-card').classList.add('selected');
+            } else {
+                // Find card by printer id when called programmatically
+                const printerCard = document.querySelector(`[data-printer-id="${printer.id}"]`);
+                if (printerCard) {
+                    printerCard.classList.add('selected');
+                }
+            }
             
             selectedPrinter = printer;
+            console.log('selectedPrinter set to:', selectedPrinter);
             updatePrintButton();
         }
 
@@ -1252,15 +1449,16 @@
         }
 
         // File handling and preview
-        let currentZoom = 100;
-        let currentPage = 1;
-        let totalPages = 1;
+        // currentZoom, currentPage, totalPages already declared above
         let previewContent = null;
 
         function handleFileSelect(event) {
             const file = event.target.files[0];
+            console.log('handleFileSelect called, file:', file);
+            
             if (file) {
                 selectedFile = file;
+                console.log('selectedFile set to:', selectedFile);
                 showFileInfo(file);
                 generatePreview(file);
                 document.getElementById('printSettings').style.display = 'block';
@@ -1529,13 +1727,22 @@
             const previewImage = document.getElementById('previewImage');
             const textPreview = document.getElementById('textPreview');
             
-            if (previewImage) {
-                previewImage.style.transform = `scale(${currentZoom / 100})`;
-                previewImage.style.transformOrigin = 'center center';
+            // Fix: Add proper null check and transform validation
+            if (previewImage && previewImage.style) {
+                try {
+                    previewImage.style.transform = `scale(${currentZoom / 100})`;
+                    previewImage.style.transformOrigin = 'center center';
+                } catch (error) {
+                    console.warn('Error applying transform to preview image:', error);
+                }
             }
             
-            if (textPreview) {
-                textPreview.style.fontSize = `${12 * (currentZoom / 100)}px`;
+            if (textPreview && textPreview.style) {
+                try {
+                    textPreview.style.fontSize = `${12 * (currentZoom / 100)}px`;
+                } catch (error) {
+                    console.warn('Error applying font size to text preview:', error);
+                }
             }
             
             updateZoomDisplay();
@@ -1567,6 +1774,39 @@
         function updateScaleValue() {
             const scale = document.getElementById('scale').value;
             document.getElementById('scaleValue').textContent = `${scale}%`;
+            
+            // Update preview if PDF is loaded
+            if (window.currentPDF && currentPage) {
+                renderPDFPage(window.currentPDF, currentPage);
+            }
+        }
+        
+        // Add event listeners for real-time preview updates
+        function setupPreviewUpdateListeners() {
+            const settingsToWatch = [
+                'orientation', 'marginTop', 'marginBottom', 
+                'marginLeft', 'marginRight'
+            ];
+            
+            settingsToWatch.forEach(settingId => {
+                const element = document.getElementById(settingId);
+                if (element) {
+                    element.addEventListener('change', () => {
+                        if (window.currentPDF && currentPage) {
+                            renderPDFPage(window.currentPDF, currentPage);
+                        }
+                    });
+                    
+                    // For number inputs, also listen to input events
+                    if (element.type === 'number') {
+                        element.addEventListener('input', () => {
+                            if (window.currentPDF && currentPage) {
+                                renderPDFPage(window.currentPDF, currentPage);
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         function resetSettings() {
@@ -1580,8 +1820,10 @@
             document.getElementById('scale').value = 100;
             document.getElementById('pagesPerSheet').value = 1;
             document.getElementById('pageRange').value = '';
-            document.getElementById('collate').checked = true;
-            document.getElementById('reverseOrder').checked = false;
+            const collateEl = document.getElementById('collate');
+            const reverseOrderEl = document.getElementById('reverseOrder');
+            if (collateEl) collateEl.checked = true;
+            if (reverseOrderEl) reverseOrderEl.checked = false;
             document.getElementById('marginTop').value = 0.5;
             document.getElementById('marginBottom').value = 0.5;
             document.getElementById('marginLeft').value = 0.5;
@@ -1608,7 +1850,27 @@
         // Update print button state
         function updatePrintButton() {
             const printBtn = document.getElementById('printBtn');
-            printBtn.disabled = !(selectedPrinter && selectedFile);
+            const floatingPrintBtn = document.getElementById('floatingPrintBtn');
+            const isEnabled = !!(selectedPrinter && selectedFile);
+            
+            // Debug logging
+            console.log('updatePrintButton called:');
+            console.log('- selectedPrinter:', selectedPrinter);
+            console.log('- selectedFile:', selectedFile);
+            console.log('- button will be enabled:', isEnabled);
+            
+            // Update both buttons
+            printBtn.disabled = !isEnabled;
+            floatingPrintBtn.disabled = !isEnabled;
+            
+            // Update button text and style based on state
+            if (isEnabled) {
+                printBtn.style.opacity = '1';
+                printBtn.style.cursor = 'pointer';
+            } else {
+                printBtn.style.opacity = '0.6';
+                printBtn.style.cursor = 'not-allowed';
+            }
         }
 
         // Submit test print job
@@ -1654,6 +1916,10 @@
 
         // Submit print job
         async function submitPrintJob() {
+            console.log('submitPrintJob called');
+            console.log('- selectedPrinter:', selectedPrinter);
+            console.log('- selectedFile:', selectedFile);
+            
             if (!selectedPrinter || !selectedFile) {
                 showAlert('Pilih printer dan file terlebih dahulu', 'error');
                 return;
@@ -1693,13 +1959,44 @@
                     scale: parseInt(document.getElementById('scale').value) || 100,
                     pages_per_sheet: parseInt(document.getElementById('pagesPerSheet').value) || 1,
                     page_range: document.getElementById('pageRange').value || '',
-                    collate: document.getElementById('collate').checked,
-                    reverse_order: document.getElementById('reverseOrder').checked,
+                    collate: document.getElementById('collate')?.checked || false,
+                reverse_order: (function() {
+                    const element = document.getElementById('reverseOrder');
+                    return element && element.checked ? element.checked : false;
+                })(),
                     margins: {
                         top: parseFloat(document.getElementById('marginTop').value) || 0.5,
                         bottom: parseFloat(document.getElementById('marginBottom').value) || 0.5,
                         left: parseFloat(document.getElementById('marginLeft').value) || 0.5,
                         right: parseFloat(document.getElementById('marginRight').value) || 0.5
+                    },
+                    // Header/Footer settings
+                    header_footer: {
+                        enabled: (function() {
+                            const element = document.getElementById('enableHeaderFooter');
+                            return element && element.checked ? element.checked : false;
+                        })(),
+                        header_left: document.getElementById('headerLeft')?.value || '',
+                        header_center: document.getElementById('headerCenter')?.value || '',
+                        header_right: document.getElementById('headerRight')?.value || '',
+                        footer_left: document.getElementById('footerLeft')?.value || '',
+                        footer_center: document.getElementById('footerCenter')?.value || '',
+                        footer_right: document.getElementById('footerRight')?.value || ''
+                    },
+                    // Page break settings
+                    page_breaks: {
+                        avoid_page_breaks: (function() {
+                            const element = document.getElementById('avoidPageBreaks');
+                            return element && element.checked ? element.checked : false;
+                        })(),
+                        insert_manual_breaks: (function() {
+                            const element = document.getElementById('insertManualBreaks');
+                            return element && element.checked ? element.checked : false;
+                        })(),
+                        break_positions: (function() {
+                            const element = document.getElementById('breakPositions');
+                            return element ? element.value || '' : '';
+                        })()
                     }
                 };
 
@@ -1854,9 +2151,27 @@
             const previewControls = document.getElementById('previewControls');
             
             try {
-                // Load PDF with PDF.js
-                const loadingTask = pdfjsLib.getDocument(`/api/files/serve/${filePath}`);
+                // Validate PDF.js library is loaded
+                if (typeof pdfjsLib === 'undefined') {
+                    throw new Error('PDF.js library is not loaded. Please refresh the page.');
+                }
+                
+                // Load PDF with PDF.js with additional options
+                const loadingTask = pdfjsLib.getDocument({
+                    url: `/api/files/serve/${filePath}`,
+                    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                    cMapPacked: true,
+                    disableAutoFetch: false,
+                    disableStream: false,
+                    disableRange: false
+                });
+                
                 const pdf = await loadingTask.promise;
+                
+                // Validate PDF object
+                if (!pdf || !pdf.numPages) {
+                    throw new Error('Invalid PDF file or corrupted document.');
+                }
                 
                 totalPages = pdf.numPages;
                 currentPage = 1;
@@ -1878,31 +2193,147 @@
                         <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
                         <div><strong>Error loading PDF</strong></div>
                         <div style="margin-top: 10px;">${error.message}</div>
+                        <div style="margin-top: 15px; font-size: 14px; color: #6c757d;">
+                            <strong>Possible solutions:</strong><br>
+                            • Try refreshing the page<br>
+                            • Upload a different PDF file<br>
+                            • Check if the file is corrupted<br>
+                            • Ensure stable internet connection
+                        </div>
                     </div>
                 `;
             }
         }
         
         async function renderPDFPage(pdf, pageNum) {
-            const page = await pdf.getPage(pageNum);
-            const scale = currentZoom / 100;
-            const viewport = page.getViewport({ scale });
+            try {
+                const page = await pdf.getPage(pageNum);
+                let scale = currentZoom / 100;
+                
+                // Apply print settings to preview
+                const printSettings = getCurrentPrintSettings();
+                let viewport;
+                
+                if (printSettings) {
+                    // Apply scale setting
+                    if (printSettings.scale && printSettings.scale !== 100) {
+                        scale = scale * (printSettings.scale / 100);
+                    }
+                    
+                    // Apply orientation
+                    try {
+                        viewport = page.getViewport({ scale });
+                        if (printSettings.orientation === 'landscape') {
+                            viewport = page.getViewport({ scale, rotation: 90 });
+                        }
+                    } catch (viewportError) {
+                        console.warn('Error creating viewport with settings, using default:', viewportError);
+                        viewport = page.getViewport({ scale: 1 });
+                    }
+                } else {
+                    try {
+                        viewport = page.getViewport({ scale });
+                    } catch (viewportError) {
+                        console.warn('Error creating viewport, using default:', viewportError);
+                        viewport = page.getViewport({ scale: 1 });
+                    }
+                }
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                // Validate canvas context
+                if (!context) {
+                    throw new Error('Failed to get 2D canvas context');
+                }
+                
+                // Fix: Add proper null check for viewport
+                if (viewport && viewport.height && viewport.width) {
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                } else {
+                    console.warn('Invalid viewport, using default dimensions');
+                    canvas.height = 800;
+                    canvas.width = 600;
+                }
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                
+                // Add additional error handling for PDF rendering
+                try {
+                    await page.render(renderContext).promise;
+                } catch (renderError) {
+                    console.error('PDF render error:', renderError);
+                    throw new Error(`Failed to render PDF page: ${renderError.message}`);
+                }
             
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+                const previewContainer = document.getElementById('previewContainer');
+                previewContainer.innerHTML = '';
+                
+                // Apply margin visualization if settings available
+                if (printSettings && printSettings.margins) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'relative';
+                    wrapper.style.display = 'inline-block';
+                    
+                    // Add margin indicators
+                    const marginTop = printSettings.margins.top || 0.5;
+                    const marginBottom = printSettings.margins.bottom || 0.5;
+                    const marginLeft = printSettings.margins.left || 0.5;
+                    const marginRight = printSettings.margins.right || 0.5;
+                    
+                    // Convert inches to pixels (approximate)
+                    const dpi = 96;
+                    const topPx = marginTop * dpi;
+                    const bottomPx = marginBottom * dpi;
+                    const leftPx = marginLeft * dpi;
+                    const rightPx = marginRight * dpi;
+                    
+                    canvas.style.marginTop = `${topPx}px`;
+                    canvas.style.marginBottom = `${bottomPx}px`;
+                    canvas.style.marginLeft = `${leftPx}px`;
+                    canvas.style.marginRight = `${rightPx}px`;
+                    
+                    wrapper.appendChild(canvas);
+                    previewContainer.appendChild(wrapper);
+                } else {
+                    previewContainer.appendChild(canvas);
+                }
             
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-            
-            await page.render(renderContext).promise;
-            
-            const previewContainer = document.getElementById('previewContainer');
-            previewContainer.innerHTML = '';
-            previewContainer.appendChild(canvas);
+            } catch (error) {
+                console.error('Error in renderPDFPage:', error);
+                const previewContainer = document.getElementById('previewContainer');
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #dc3545;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                        <div><strong>Error rendering PDF page</strong></div>
+                        <div style="margin-top: 10px; font-size: 14px;">${error.message}</div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">Please try refreshing or uploading a different PDF file.</div>
+                    </div>
+                `;
+                throw error;
+            }
+        }
+        
+        function getCurrentPrintSettings() {
+            try {
+                return {
+                    orientation: document.getElementById('orientation')?.value || 'portrait',
+                    scale: parseInt(document.getElementById('scale')?.value) || 100,
+                    margins: {
+                        top: parseFloat(document.getElementById('marginTop')?.value) || 0.5,
+                        bottom: parseFloat(document.getElementById('marginBottom')?.value) || 0.5,
+                        left: parseFloat(document.getElementById('marginLeft')?.value) || 0.5,
+                        right: parseFloat(document.getElementById('marginRight')?.value) || 0.5
+                    }
+                };
+            } catch (error) {
+                console.warn('Could not get print settings:', error);
+                return null;
+            }
         }
         
         async function loadExcelPreview(uploadResult, fileName) {
@@ -2015,37 +2446,57 @@
         // Enhanced preview controls
         async function fitToWidth() {
             if (window.currentPDF) {
-                const container = document.getElementById('previewContainer');
-                const containerWidth = container.clientWidth - 40; // Account for padding
-                
-                const page = await window.currentPDF.getPage(currentPage);
-                const viewport = page.getViewport({ scale: 1 });
-                
-                const scale = containerWidth / viewport.width;
-                currentZoom = Math.round(scale * 100);
-                
-                await renderPDFPage(window.currentPDF, currentPage);
-                updateZoomDisplay();
+                try {
+                    const container = document.getElementById('previewContainer');
+                    const containerWidth = container.clientWidth - 40; // Account for padding
+                    
+                    const page = await window.currentPDF.getPage(currentPage);
+                    const viewport = page.getViewport({ scale: 1 });
+                    
+                    const scale = containerWidth / viewport.width;
+                    currentZoom = Math.round(scale * 100);
+                    
+                    await renderPDFPage(window.currentPDF, currentPage);
+                    updateZoomDisplay();
+                } catch (error) {
+                    console.error('Error in fitToWidth:', error);
+                    const previewContainer = document.getElementById('previewContainer');
+                    previewContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #dc3545;">
+                            <div>Error fitting PDF to width: ${error.message}</div>
+                        </div>
+                    `;
+                }
             }
         }
         
         async function fitToPage() {
             if (window.currentPDF) {
-                const container = document.getElementById('previewContainer');
-                const containerWidth = container.clientWidth - 40;
-                const containerHeight = container.clientHeight - 40;
-                
-                const page = await window.currentPDF.getPage(currentPage);
-                const viewport = page.getViewport({ scale: 1 });
-                
-                const scaleX = containerWidth / viewport.width;
-                const scaleY = containerHeight / viewport.height;
-                const scale = Math.min(scaleX, scaleY);
-                
-                currentZoom = Math.round(scale * 100);
-                
-                await renderPDFPage(window.currentPDF, currentPage);
-                updateZoomDisplay();
+                try {
+                    const container = document.getElementById('previewContainer');
+                    const containerWidth = container.clientWidth - 40;
+                    const containerHeight = container.clientHeight - 40;
+                    
+                    const page = await window.currentPDF.getPage(currentPage);
+                    const viewport = page.getViewport({ scale: 1 });
+                    
+                    const scaleX = containerWidth / viewport.width;
+                    const scaleY = containerHeight / viewport.height;
+                    const scale = Math.min(scaleX, scaleY);
+                    
+                    currentZoom = Math.round(scale * 100);
+                    
+                    await renderPDFPage(window.currentPDF, currentPage);
+                    updateZoomDisplay();
+                } catch (error) {
+                    console.error('Error in fitToPage:', error);
+                    const previewContainer = document.getElementById('previewContainer');
+                    previewContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #dc3545;">
+                            <div>Error fitting PDF to page: ${error.message}</div>
+                        </div>
+                    `;
+                }
             }
         }
         
@@ -2116,6 +2567,16 @@
                 }
             }, 5000);
         }
+        
+        // Initialize event listeners when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupPreviewUpdateListeners();
+        });
     </script>
+    
+    <!-- Floating Print Button -->
+    <button class="floating-print-btn" onclick="submitPrintJob()" id="floatingPrintBtn" disabled title="Mulai Cetak">
+        🖨️
+    </button>
 </body>
 </html>

@@ -213,12 +213,27 @@ class FileService:
         """Dapatkan jumlah halaman PDF"""
         try:
             with open(file_path, 'rb') as f:
-                pdf_reader = PyPDF2.PdfReader(f)
+                pdf_reader = PyPDF2.PdfReader(f, strict=False)
                 return len(pdf_reader.pages)
                 
         except Exception as e:
-            logger.error(f"Error getting PDF pages for {file_path}: {e}")
-            return 0
+            logger.warning(f"Error getting PDF pages for {file_path}: {e}")
+            # Try alternative method for corrupted PDFs
+            try:
+                import fitz  # PyMuPDF
+                doc = fitz.open(file_path)
+                page_count = len(doc)
+                doc.close()
+                return page_count
+            except ImportError:
+                logger.info("PyMuPDF not available, using fallback method")
+                # Fallback: estimate pages by file size (rough estimate)
+                file_size = os.path.getsize(file_path)
+                estimated_pages = max(1, file_size // 50000)  # Rough estimate
+                return estimated_pages
+            except Exception as e2:
+                logger.error(f"All PDF parsing methods failed for {file_path}: {e2}")
+                return 1  # Default to 1 page if all methods fail
     
     def _get_image_info(self, file_path: str) -> Dict[str, Any]:
         """Dapatkan info image"""

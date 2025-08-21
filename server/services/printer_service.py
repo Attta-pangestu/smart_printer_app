@@ -120,7 +120,7 @@ class PrinterService:
         return None
     
     def get_printer_status(self, printer_id: str) -> PrinterStatus:
-        """Mendapatkan status printer"""
+        """Mendapatkan status printer dengan monitoring yang lebih akurat"""
         printer = self.get_printer(printer_id)
         if not printer:
             return PrinterStatus.OFFLINE
@@ -132,24 +132,98 @@ class PrinterService:
             # Dapatkan status printer
             printer_info = win32print.GetPrinter(printer_handle, 2)
             status = printer_info['Status']
+            jobs_count = printer_info.get('cJobs', 0)
             
             win32print.ClosePrinter(printer_handle)
             
-            # Konversi status Windows ke enum kita
-            if status == 0:  # PRINTER_STATUS_READY
-                return PrinterStatus.ONLINE
+            # Konversi status Windows ke enum kita dengan prioritas yang benar
+            if status & 0x00000002:  # PRINTER_STATUS_ERROR
+                return PrinterStatus.ERROR
+            elif status & 0x00000400:  # PRINTER_STATUS_OFFLINE
+                return PrinterStatus.OFFLINE
             elif status & 0x00000001:  # PRINTER_STATUS_PAUSED
                 return PrinterStatus.PAUSED
-            elif status & 0x00000002:  # PRINTER_STATUS_ERROR
-                return PrinterStatus.ERROR
-            elif status & 0x00000200:  # PRINTER_STATUS_BUSY
+            elif status & 0x00000200 or jobs_count > 0:  # PRINTER_STATUS_BUSY or has jobs
                 return PrinterStatus.BUSY
+            elif status == 0:  # PRINTER_STATUS_READY
+                return PrinterStatus.ONLINE
             else:
-                return PrinterStatus.OFFLINE
+                # Default untuk status yang tidak dikenal
+                return PrinterStatus.ONLINE
                 
         except Exception as e:
             logger.error(f"Error getting printer status for {printer_id}: {e}")
             return PrinterStatus.ERROR
+    
+    def get_detailed_printer_status(self, printer_id: str) -> Dict[str, Any]:
+        """Mendapatkan status printer yang detail untuk monitoring real-time"""
+        printer = self.get_printer(printer_id)
+        if not printer:
+            return {
+                'status': PrinterStatus.OFFLINE,
+                'jobs_count': 0,
+                'error_message': 'Printer not found',
+                'last_updated': datetime.now().isoformat()
+            }
+        
+        try:
+            printer_handle = win32print.OpenPrinter(printer.name)
+            printer_info = win32print.GetPrinter(printer_handle, 2)
+            
+            status = printer_info['Status']
+            jobs_count = printer_info.get('cJobs', 0)
+            
+            # Get job details if any
+            jobs_info = []
+            if jobs_count > 0:
+                try:
+                    jobs = win32print.EnumJobs(printer_handle, 0, -1, 1)
+                    for job in jobs:
+                        jobs_info.append({
+                            'job_id': job.get('JobId', 0),
+                            'document': job.get('pDocument', 'Unknown'),
+                            'status': job.get('Status', 0),
+                            'pages_printed': job.get('PagesPrinted', 0),
+                            'total_pages': job.get('TotalPages', 0)
+                        })
+                except Exception as job_error:
+                    logger.warning(f"Error getting job details: {job_error}")
+            
+            win32print.ClosePrinter(printer_handle)
+            
+            # Determine status
+            printer_status = PrinterStatus.ONLINE
+            error_message = None
+            
+            if status & 0x00000002:  # PRINTER_STATUS_ERROR
+                printer_status = PrinterStatus.ERROR
+                error_message = "Printer error detected"
+            elif status & 0x00000400:  # PRINTER_STATUS_OFFLINE
+                printer_status = PrinterStatus.OFFLINE
+                error_message = "Printer is offline"
+            elif status & 0x00000001:  # PRINTER_STATUS_PAUSED
+                printer_status = PrinterStatus.PAUSED
+                error_message = "Printer is paused"
+            elif status & 0x00000200 or jobs_count > 0:  # PRINTER_STATUS_BUSY
+                printer_status = PrinterStatus.BUSY
+            
+            return {
+                'status': printer_status,
+                'jobs_count': jobs_count,
+                'jobs_info': jobs_info,
+                'raw_status': status,
+                'error_message': error_message,
+                'last_updated': datetime.now().isoformat()
+            }
+                
+        except Exception as e:
+            logger.error(f"Error getting detailed printer status for {printer_id}: {e}")
+            return {
+                'status': PrinterStatus.ERROR,
+                'jobs_count': 0,
+                'error_message': str(e),
+                'last_updated': datetime.now().isoformat()
+            }
     
     def get_printer_jobs(self, printer_id: str) -> List[Dict[str, Any]]:
         """Mendapatkan job yang sedang berjalan di printer"""

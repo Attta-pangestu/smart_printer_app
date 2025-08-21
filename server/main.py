@@ -12,6 +12,7 @@ import threading
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pathlib import Path
+from docx2pdf import convert
 
 from services import PrinterService, JobService, DiscoveryService, FileService
 from models.printer import Printer, PrinterInfo, PrinterDiscovery
@@ -54,7 +55,7 @@ class PrintServerApp:
         return {
             'server': {
                 'host': '0.0.0.0',
-                'port': 8080,
+                'port': 8082,
                 'debug': False,
                 'cors_origins': ['*']
             },
@@ -94,10 +95,15 @@ class PrintServerApp:
     
     def _setup_static_files(self):
         """Mount static file directories"""
-        # Mount static files for web interface
-        static_dir = Path(__file__).parent.parent / "static"
+        # Mount static files for web interface - use server/static directory
+        static_dir = Path(__file__).parent / "static"
         if static_dir.exists():
             self.app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        
+        # Legacy static directory support
+        legacy_static_dir = Path(__file__).parent.parent / "static"
+        if legacy_static_dir.exists():
+            self.app.mount("/legacy", StaticFiles(directory=str(legacy_static_dir)), name="legacy")
         
         # Legacy web directory support
         web_dir = Path(__file__).parent.parent / "web"
@@ -131,9 +137,16 @@ class PrintServerApp:
         @self.app.get("/", response_class=HTMLResponse)
         async def root():
             """Serve main dashboard"""
-            index_file = Path(__file__).parent.parent / "static" / "index.html"
+            # Try server/static first (correct location)
+            index_file = Path(__file__).parent / "static" / "index.html"
             if index_file.exists():
                 return FileResponse(index_file)
+            
+            # Fallback to legacy location
+            legacy_index_file = Path(__file__).parent.parent / "static" / "index.html"
+            if legacy_index_file.exists():
+                return FileResponse(legacy_index_file)
+            
             return HTMLResponse("""
             <html>
                 <head><title>Epson L120 Print Server</title></head>
@@ -148,9 +161,16 @@ class PrintServerApp:
         @self.app.get("/config", response_class=HTMLResponse)
         async def config_page():
             """Serve configuration page"""
-            config_file = Path(__file__).parent.parent / "static" / "config.html"
+            # Try server/static first
+            config_file = Path(__file__).parent / "static" / "config.html"
             if config_file.exists():
                 return FileResponse(config_file)
+            
+            # Fallback to legacy location
+            legacy_config_file = Path(__file__).parent.parent / "static" / "config.html"
+            if legacy_config_file.exists():
+                return FileResponse(legacy_config_file)
+            
             raise HTTPException(status_code=404, detail="Configuration page not found")
     
     def _setup_api_routes(self):
@@ -242,6 +262,21 @@ def _setup_system_endpoints(server_instance):
         status_str = status.name if hasattr(status, 'name') else str(status)
         return status_map.get(status_str, {"status": "unknown", "message": "Unknown status"})
     
+    @server.app.get("/api/printers/{printer_id}/status/detailed")
+    async def get_detailed_printer_status(printer_id: str):
+        """Get detailed printer status for real-time monitoring"""
+        printer = server.printer_service.get_printer(printer_id)
+        if not printer:
+            raise HTTPException(status_code=404, detail="Printer not found")
+        
+        detailed_status = server.printer_service.get_detailed_printer_status(printer_id)
+        
+        # Convert enum to string for JSON serialization
+        if hasattr(detailed_status['status'], 'name'):
+            detailed_status['status'] = detailed_status['status'].name
+        
+        return detailed_status
+    
     @server.app.post("/api/files/upload")
     async def upload_file(file: UploadFile = File(...)):
         """Upload a file for printing"""
@@ -259,6 +294,9 @@ def _setup_system_endpoints(server_instance):
             # Save file using FileService
             file_info = server.file_service.save_uploaded_file(file_content, file.filename)
             
+            # Construct preview URL
+            preview_url = f"/api/files/{file_info['name']}/preview"
+
             return {
                 "file_id": file_info["name"],  # Use filename as file_id
                 "file_name": file_info["name"],
@@ -269,7 +307,8 @@ def _setup_system_endpoints(server_instance):
                 "type": file_info["type"],
                 "upload_path": file_info["path"],
                 "path": file_info["path"],
-                "pages_detected": file_info.get("pages", None)
+                "pages_detected": file_info.get("pages", None),
+                "preview_url": preview_url
             }
         except HTTPException:
             raise
@@ -287,13 +326,31 @@ def _setup_system_endpoints(server_instance):
             file_path = server.file_service.upload_dir / file_id
             if not file_path.exists():
                 raise HTTPException(status_code=404, detail="File not found")
-            
-            # Return file for preview
-            return FileResponse(
-                path=str(file_path),
-                media_type='application/octet-stream',
-                headers={"Content-Disposition": f"inline; filename={file_id}"}
-            )
+
+            # Check file type and return appropriate response
+            if file_id.lower().endswith('.pdf'):
+                return FileResponse(
+                    path=str(file_path),
+                    media_type='application/pdf',
+                    headers={"Content-Disposition": f"inline; filename={file_id}"}
+                )
+            elif file_id.lower().endswith('.docx'):
+                pdf_path = file_path.with_suffix('.pdf')
+                if not pdf_path.exists():
+                    from docx2pdf import convert
+                    convert(str(file_path), str(pdf_path))
+                return FileResponse(
+                    path=str(pdf_path),
+                    media_type='application/pdf',
+                    headers={"Content-Disposition": f"inline; filename={pdf_path.name}"}
+                )
+            else:
+                # For other file types, return as octet-stream
+                return FileResponse(
+                    path=str(file_path),
+                    media_type='application/octet-stream',
+                    headers={"Content-Disposition": f"inline; filename={file_id}"}
+                )
         except HTTPException:
             raise
         except Exception as e:
@@ -330,6 +387,97 @@ def _setup_system_endpoints(server_instance):
             logger.error(f"File serving error for {file_path}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
     
+    @server.app.post("/api/files/convert-to-pdf")
+    async def convert_to_pdf(request_data: dict):
+        """Convert Excel or Word files to PDF for preview"""
+        try:
+            file_path = request_data.get("file_path")
+            file_type = request_data.get("file_type")
+            
+            if not file_path or not file_type:
+                raise HTTPException(status_code=400, detail="file_path and file_type are required")
+            
+            # Get full path
+            full_path = server.file_service.upload_dir / file_path
+            if not full_path.exists():
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            # Convert based on file type
+            if file_type == "excel":
+                # For Excel files, we'll use a simple conversion approach
+                pdf_path = full_path.with_suffix('.pdf')
+                
+                try:
+                    # Try to convert using pandas and matplotlib for basic Excel preview
+                    import pandas as pd
+                    import matplotlib.pyplot as plt
+                    from matplotlib.backends.backend_pdf import PdfPages
+                    
+                    # Read Excel file
+                    df = pd.read_excel(str(full_path))
+                    
+                    # Create PDF
+                    with PdfPages(str(pdf_path)) as pdf:
+                        fig, ax = plt.subplots(figsize=(11.69, 8.27))  # A4 size
+                        ax.axis('tight')
+                        ax.axis('off')
+                        
+                        # Create table
+                        table = ax.table(cellText=df.values, colLabels=df.columns, 
+                                       cellLoc='center', loc='center')
+                        table.auto_set_font_size(False)
+                        table.set_fontsize(8)
+                        table.scale(1, 1.5)
+                        
+                        pdf.savefig(fig, bbox_inches='tight')
+                        plt.close()
+                    
+                    return {"pdf_path": pdf_path.name, "success": True}
+                    
+                except Exception as e:
+                    logger.warning(f"Excel conversion failed: {e}")
+                    # Fallback: create a simple text-based PDF
+                    from reportlab.pdfgen import canvas
+                    from reportlab.lib.pagesizes import A4
+                    
+                    c = canvas.Canvas(str(pdf_path), pagesize=A4)
+                    c.drawString(100, 750, f"Excel File: {file_path}")
+                    c.drawString(100, 720, "Preview not available - file ready for printing")
+                    c.save()
+                    
+                    return {"pdf_path": pdf_path.name, "success": True}
+                    
+            elif file_type == "word":
+                # For Word files, try to convert using docx2pdf
+                pdf_path = full_path.with_suffix('.pdf')
+                
+                try:
+                    from docx2pdf import convert
+                    convert(str(full_path), str(pdf_path))
+                    return {"pdf_path": pdf_path.name, "success": True}
+                    
+                except Exception as e:
+                    logger.warning(f"Word conversion failed: {e}")
+                    # Fallback: create a simple text-based PDF
+                    from reportlab.pdfgen import canvas
+                    from reportlab.lib.pagesizes import A4
+                    
+                    c = canvas.Canvas(str(pdf_path), pagesize=A4)
+                    c.drawString(100, 750, f"Word Document: {file_path}")
+                    c.drawString(100, 720, "Preview not available - file ready for printing")
+                    c.save()
+                    
+                    return {"pdf_path": pdf_path.name, "success": True}
+            
+            else:
+                raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
+                
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Conversion error: {e}")
+            raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+    
     @server.app.post("/api/jobs/submit")
     async def submit_print_job(request_data: dict):
         """Submit a print job with full print settings"""
@@ -344,8 +492,18 @@ def _setup_system_endpoints(server_instance):
                 raise HTTPException(status_code=400, detail="printer_id and file_id are required")
             
             # Convert file_id to file_path
-            # file_id is actually the filename from upload
+            # file_id is actually the filename from upload (already includes timestamp)
             file_path = str(server.file_service.upload_dir / file_id)
+            
+            logger.info(f"Looking for file at path: {file_path}")
+            
+            # Check if file exists
+            if not os.path.exists(file_path):
+                logger.error(f"File not found at path: {file_path}")
+                # List files in upload directory for debugging
+                upload_files = list(server.file_service.upload_dir.glob("*"))
+                logger.info(f"Available files in upload directory: {[f.name for f in upload_files]}")
+                raise HTTPException(status_code=400, detail=f"File {file_id} not found")
             
             # Create PrintSettings object from the settings data
             print_settings = PrintSettings(
@@ -366,7 +524,21 @@ def _setup_system_endpoints(server_instance):
                     "left": 0.5,
                     "right": 0.5
                 }),
-                custom_paper=settings.get("custom_paper")
+                custom_paper=settings.get("custom_paper"),
+                header_footer=settings.get("header_footer", {
+                    "enabled": False,
+                    "header_left": "",
+                    "header_center": "",
+                    "header_right": "",
+                    "footer_left": "",
+                    "footer_center": "",
+                    "footer_right": ""
+                }),
+                page_breaks=settings.get("page_breaks", {
+                    "avoid_page_breaks": False,
+                    "insert_manual_breaks": False,
+                    "break_positions": ""
+                })
             )
             
             job = server.job_service.submit_job(printer_id, file_path, print_settings)

@@ -9,7 +9,48 @@ const API_BASE = '/api';
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    
+    // Initialize advanced print settings
+    initializeAdvancedSettings();
 });
+
+// Initialize advanced print settings
+function initializeAdvancedSettings() {
+    // Handle fit to page change
+    const fitToPageSelect = document.getElementById('fitToPage');
+    if (fitToPageSelect) {
+        fitToPageSelect.addEventListener('change', function() {
+            toggleCustomScale();
+        });
+    }
+    
+    // Initialize custom scale visibility
+    toggleCustomScale();
+}
+
+// Toggle custom scale input visibility
+function toggleCustomScale() {
+    const fitToPage = document.getElementById('fitToPage').value;
+    const customScaleDiv = document.getElementById('customScaleDiv');
+    
+    if (fitToPage === 'custom') {
+        customScaleDiv.style.display = 'block';
+    } else {
+        customScaleDiv.style.display = 'none';
+    }
+}
+
+// Toggle page range input visibility
+function togglePageRange() {
+    const pageRangeType = document.getElementById('pageRangeType').value;
+    const pageRangeDiv = document.getElementById('pageRangeDiv');
+    
+    if (pageRangeType === 'range') {
+        pageRangeDiv.style.display = 'block';
+    } else {
+        pageRangeDiv.style.display = 'none';
+    }
+}
 
 function initializeApp() {
     // Load initial data
@@ -501,15 +542,57 @@ async function submitPrintJob() {
         return;
     }
     
+    const printerName = document.getElementById('printerSelect').value;
+    if (!printerName) {
+        showAlert('error', 'Please select a printer');
+        return;
+    }
+    
+    // Advanced settings
+    const fitToPage = document.getElementById('fitToPage').value;
+    const customScale = document.getElementById('customScale').value;
+    const pageRangeType = document.getElementById('pageRangeType').value;
+    const pageRange = document.getElementById('pageRange').value;
+    const marginTop = document.getElementById('marginTop').value;
+    const marginBottom = document.getElementById('marginBottom').value;
+    const marginLeft = document.getElementById('marginLeft').value;
+    const marginRight = document.getElementById('marginRight').value;
+    const centerHorizontally = document.getElementById('centerHorizontally').checked;
+    const centerVertically = document.getElementById('centerVertically').checked;
+    
+    // Validate page range if specified
+    if (pageRangeType === 'range' && pageRange) {
+        if (!validatePageRange(pageRange)) {
+            showAlert('error', 'Invalid page range format. Use examples: 1-5, 1,3,5, 1-3,5,7-9');
+            return;
+        }
+    }
+    
     const formData = new FormData();
     formData.append('file_id', currentFileId);
-    formData.append('printer_name', document.getElementById('printerSelect').value);
+    formData.append('printer_name', printerName);
     formData.append('copies', document.getElementById('copies').value);
     formData.append('color_mode', document.getElementById('colorMode').value);
     formData.append('paper_size', document.getElementById('paperSize').value);
     formData.append('orientation', document.getElementById('orientation').value);
     formData.append('quality', document.getElementById('quality').value);
     formData.append('duplex', document.getElementById('duplex').value);
+    
+    // Advanced settings
+    formData.append('fit_to_page', fitToPage);
+    if (fitToPage === 'custom') {
+        formData.append('custom_scale', customScale);
+    }
+    formData.append('page_range_type', pageRangeType);
+    if (pageRangeType === 'range' && pageRange) {
+        formData.append('page_range', pageRange);
+    }
+    formData.append('margin_top', marginTop);
+    formData.append('margin_bottom', marginBottom);
+    formData.append('margin_left', marginLeft);
+    formData.append('margin_right', marginRight);
+    formData.append('center_horizontally', centerHorizontally);
+    formData.append('center_vertically', centerVertically);
     
     try {
         const response = await fetch(`${API_BASE}/jobs/submit`, {
@@ -525,6 +608,9 @@ async function submitPrintJob() {
             document.getElementById('printForm').reset();
             document.getElementById('copies').value = '1';
             
+            // Reset advanced settings to defaults
+            resetAdvancedSettings();
+            
             // Switch to jobs tab
             document.getElementById('jobs-tab').click();
         } else {
@@ -534,6 +620,31 @@ async function submitPrintJob() {
     } catch (error) {
         showAlert('error', `Failed to submit print job: ${error.message}`);
     }
+}
+
+// Validate page range format
+function validatePageRange(pageRange) {
+    // Allow formats like: 1-5, 1,3,5, 1-3,5,7-9
+    const pattern = /^\d+(-\d+)?(,\d+(-\d+)?)*$/;
+    return pattern.test(pageRange.replace(/\s/g, ''));
+}
+
+// Reset advanced settings to defaults
+function resetAdvancedSettings() {
+    document.getElementById('fitToPage').value = 'fit';
+    document.getElementById('customScale').value = '100';
+    document.getElementById('pageRangeType').value = 'all';
+    document.getElementById('pageRange').value = '';
+    document.getElementById('marginTop').value = '20';
+    document.getElementById('marginBottom').value = '20';
+    document.getElementById('marginLeft').value = '20';
+    document.getElementById('marginRight').value = '20';
+    document.getElementById('centerHorizontally').checked = true;
+    document.getElementById('centerVertically').checked = true;
+    
+    // Hide conditional divs
+    document.getElementById('customScaleDiv').style.display = 'none';
+    document.getElementById('pageRangeDiv').style.display = 'none';
 }
 
 // Printer actions

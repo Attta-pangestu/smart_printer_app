@@ -180,9 +180,10 @@ class DocumentService:
             pix = page.get_pixmap(matrix=mat)
             
             # Konversi ke format yang sesuai berdasarkan color_mode
-            if settings.get('color_mode') == 'grayscale':
+            color_mode = settings.get('color_mode')
+            if color_mode == 'grayscale' or (hasattr(color_mode, 'value') and color_mode.value == 'GRAYSCALE'):
                 pix = fitz.Pixmap(fitz.csGRAY, pix)
-            elif settings.get('color_mode') == 'black_white':
+            elif color_mode == 'black_white' or (hasattr(color_mode, 'value') and color_mode.value == 'BLACK_WHITE'):
                 pix = fitz.Pixmap(fitz.csGRAY, pix)
                 # Tambahan processing untuk black & white bisa ditambahkan di sini
             
@@ -375,10 +376,19 @@ class DocumentService:
         
         # Validasi color_mode
         color_mode = settings.get('color_mode', 'color')
-        if color_mode not in ['color', 'grayscale', 'black_white']:
-            errors.append(f"Invalid color mode: {color_mode}")
-        else:
+        valid_color_modes = ['color', 'grayscale', 'black_white']
+        
+        # Support for enum ColorMode
+        if hasattr(color_mode, 'value'):
+            color_mode_value = color_mode.value.lower()
+            if color_mode_value in valid_color_modes:
+                validated['color_mode'] = color_mode
+            else:
+                errors.append(f"Invalid color mode enum: {color_mode}")
+        elif color_mode in valid_color_modes:
             validated['color_mode'] = color_mode
+        else:
+            errors.append(f"Invalid color mode: {color_mode}")
         
         # Validasi print_quality
         print_quality = settings.get('print_quality', 'high')

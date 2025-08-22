@@ -18,7 +18,7 @@ from services import PrinterService, JobService, DiscoveryService, FileService, 
 from services.enhanced_document_service import EnhancedDocumentService
 from api.document_manipulation import router as document_router
 from models.printer import Printer, PrinterInfo, PrinterDiscovery
-from models.job import PrintJob, PrintSettings, JobStatus
+from models.job import PrintJob, PrintSettings, JobStatus, PrintMethod
 from models.response import (
     APIResponse, PaginatedResponse, StatusResponse,
     PrinterStatusResponse, FileUploadResponse, JobSubmissionResponse
@@ -563,6 +563,53 @@ def _setup_system_endpoints(server_instance):
                 logger.info(f"Available files in upload directory: {[f.name for f in upload_files]}")
                 raise HTTPException(status_code=400, detail=f"File {file_id} not found")
             
+            # Handle print method selection
+            print_method = settings.get("print_method", "auto_rotation")
+            logger.info(f"Selected print method: {print_method}")
+            
+            # Handle advanced settings
+            fit_to_page = settings.get("fit_to_page", "fit_to_page")
+            custom_scale = settings.get("custom_scale", 100)
+            page_range_type = settings.get("page_range_type", "all")
+            page_range_custom = settings.get("page_range_custom", "")
+            
+            # Determine actual page range based on type
+            actual_page_range = ""
+            if page_range_type == "page_range":
+                actual_page_range = page_range_custom
+            elif page_range_type == "current":
+                actual_page_range = "1"  # Default to first page for current
+            
+            # Apply print method specific settings
+            if print_method == "auto_rotation":
+                # Auto Rotation: Use fit setting for optimal paper usage
+                fit_to_page = "fit_to_page"
+                actual_scale = 100
+                logger.info("Applied Auto Rotation method: fit_to_page with 100% scale")
+            elif print_method == "full_page":
+                # Full Page: Use 137% scaling for maximum coverage
+                fit_to_page = "custom"
+                actual_scale = 137
+                logger.info("Applied Full Page method: custom scale 137%")
+            elif print_method == "fit_to_page":
+                # Fit to Page (Safe): Standard fit setting
+                fit_to_page = "fit_to_page"
+                actual_scale = 100
+                logger.info("Applied Fit to Page (Safe) method: fit_to_page with 100% scale")
+            else:
+                # Default fallback
+                actual_scale = custom_scale if fit_to_page == "custom" else 100
+            
+            # Handle margin settings
+            margin_top = float(settings.get("margin_top", 0.39))
+            margin_bottom = float(settings.get("margin_bottom", 0.39))
+            margin_left = float(settings.get("margin_left", 0.39))
+            margin_right = float(settings.get("margin_right", 0.39))
+            
+            # Handle positioning settings
+            center_horizontally = settings.get("center_horizontally", True)
+            center_vertically = settings.get("center_vertically", True)
+            
             # Create PrintSettings object from the settings data
             print_settings = PrintSettings(
                 copies=settings.get("copies", 1),
@@ -571,17 +618,17 @@ def _setup_system_endpoints(server_instance):
                 orientation=settings.get("orientation", "portrait"),
                 quality=settings.get("quality", "normal"),
                 duplex=settings.get("duplex", "none"),
-                scale=settings.get("scale", 100),
+                scale=actual_scale,
                 pages_per_sheet=settings.get("pages_per_sheet", 1),
-                page_range=settings.get("page_range", ""),
+                page_range=actual_page_range,
                 collate=settings.get("collate", True),
                 reverse_order=settings.get("reverse_order", False),
-                margins=settings.get("margins", {
-                    "top": 0.5,
-                    "bottom": 0.5,
-                    "left": 0.5,
-                    "right": 0.5
-                }),
+                margins={
+                    "top": margin_top,
+                    "bottom": margin_bottom,
+                    "left": margin_left,
+                    "right": margin_right
+                },
                 custom_paper=settings.get("custom_paper"),
                 header_footer=settings.get("header_footer", {
                     "enabled": False,
@@ -598,10 +645,15 @@ def _setup_system_endpoints(server_instance):
                     "break_positions": ""
                 }),
                 # New advanced features
-                fit_to_page=settings.get("fit_to_page", "actual_size"),
+                fit_to_page=fit_to_page,
                 split_pdf=settings.get("split_pdf", False),
                 split_page_range=settings.get("split_page_range", ""),
-                split_output_prefix=settings.get("split_output_prefix", "page")
+                split_output_prefix=settings.get("split_output_prefix", "page"),
+                # Print method for full page printing
+                print_method=print_method,
+                # Additional positioning settings
+                center_horizontally=center_horizontally,
+                center_vertically=center_vertically
             )
             
             job = server.job_service.submit_job(printer_id, file_path, print_settings)
@@ -740,6 +792,7 @@ def _setup_system_endpoints(server_instance):
                 duplex=print_settings_data.get("duplex", "none"),
                 scale=print_settings_data.get("scale", 100),
                 pages_per_sheet=print_settings_data.get("pages_per_sheet", 1),
+                page_range_type=print_settings_data.get("page_range_type", "all"),
                 page_range=print_settings_data.get("page_range", ""),
                 collate=print_settings_data.get("collate", True),
                 reverse_order=print_settings_data.get("reverse_order", False),

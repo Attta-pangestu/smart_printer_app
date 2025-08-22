@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-08-21T19:39:37.851843",
+  "test_file": "D:\\Gawean Rebinmas\\Driver_Epson_L120\\temp\\Test_print.pdf",
+  "results": {
+    "system_env": {
+      "Python version": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+      "Operating System": "nt",
+      "Current working directory": "D:\\Gawean Rebinmas\\Driver_Epson_L120",
+      "Test file exists": true,
+      "Test file size": 36018
+    },
+    "printer_drivers": [
+      {
+        "name": "OneNote (Desktop)",
+        "driver": "Send to Microsoft OneNote 16 Driver",
+        "port": "nul:",
+        "status": 0,
+        "attributes": 576
+      },
+      {
+        "name": "Microsoft Print to PDF",
+        "driver": "Microsoft Print To PDF",
+        "port": "PORTPROMPT:",
+        "status": 0,
+        "attributes": 576
+      },
+      {
+        "name": "HP791074.lan (HP LaserJet Pro M428f-M429f)",
+        "driver": "HP LaserJet Pro M428f-M429f PCL-6 (V4)",
+        "port": "WSD-cc53150c-cdc7-4e5c-9b3a-37d3aac1b1d6",
+        "status": 0,
+        "attributes": 576
+      },
+      {
+        "name": "HP LaserJet Pro M428f-M429f [791074] (Fax)",
+        "driver": "Microsoft IPP Class Driver",
+        "port": "WSD-584465a6-3686-4802-988e-3ce9f4851889",
+        "status": 0,
+        "attributes": 576
+      },
+      {
+        "name": "EPSON L120 Series (Copy 1)",
+        "driver": "EPSON L120 Series",
+        "port": "USB002",
+        "status": 0,
+        "attributes": 3648
+      },
+      {
+        "name": "EPSON L120 Series",
+        "driver": "EPSON L120 Series",
+        "port": "USB004",
+        "status": 0,
+        "attributes": 2624
+      },
+      {
+        "name": "Adobe PDF",
+        "driver": "Adobe PDF Converter",
+        "port": "Documents\\*.pdf",
+        "status": 0,
+        "attributes": 4672
+      }
+    ],
+    "print_methods": {
+      "test_shell_execute_print": {
+        "success": true,
+        "details": "ShellExecute returned: 42"
+      },
+      "test_powershell_print": {
+        "success": true,
+        "details": "Return code: 0, Output: \nHandles  NPM(K)    PM(K)      WS(K)     CPU(s)     Id  SI ProcessName                                                                     \n-------  ------    -----      -----     ------     --  -- -----------                                                                     \n    154      14     3968      10932       0.03   6640   1 Acrobat                                                                         \n\n\n, Error: "
+      },
+      "test_win32api_print": {
+        "success": true,
+        "details": "win32api print returned: 42"
+      },
+      "test_gsprint_method": {
+        "success": false,
+        "details": "gsprint not found in PATH"
+      }
+    }
+  }
+}

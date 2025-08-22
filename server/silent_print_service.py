@@ -151,7 +151,9 @@ class SilentPrintService:
                         devmode.Color = 1  # Monochrome/Grayscale
                     elif settings.color_mode == ColorMode.BLACK_WHITE:
                         devmode.Color = 1  # Monochrome
-                        devmode.PrintQuality = -4  # Draft quality for pure B&W
+                        # Set additional properties for true black and white
+                        if hasattr(devmode, 'PrintQuality'):
+                            devmode.PrintQuality = -4  # Draft quality for pure B&W
                     print(f"Applied color mode: {settings.color_mode} -> {devmode.Color}")
                 except Exception as e:
                     print(f"Warning: Could not set color mode: {e}")
@@ -471,41 +473,94 @@ class SilentPrintService:
             # Calculate scaling based on fit to page mode
             img_width, img_height = img.size
             
+            # Get margin settings (in points, convert to pixels)
+            margin_top = 0
+            margin_bottom = 0
+            margin_left = 0
+            margin_right = 0
+            
+            if hasattr(self, 'print_settings') and self.print_settings:
+                if hasattr(self.print_settings, 'margin_top'):
+                    margin_top = int(self.print_settings.margin_top * printer_dc.GetDeviceCaps(win32con.LOGPIXELSY) / 72)
+                if hasattr(self.print_settings, 'margin_bottom'):
+                    margin_bottom = int(self.print_settings.margin_bottom * printer_dc.GetDeviceCaps(win32con.LOGPIXELSY) / 72)
+                if hasattr(self.print_settings, 'margin_left'):
+                    margin_left = int(self.print_settings.margin_left * printer_dc.GetDeviceCaps(win32con.LOGPIXELSX) / 72)
+                if hasattr(self.print_settings, 'margin_right'):
+                    margin_right = int(self.print_settings.margin_right * printer_dc.GetDeviceCaps(win32con.LOGPIXELSX) / 72)
+            
+            # Calculate available print area after margins
+            available_width = printer_width - margin_left - margin_right
+            available_height = printer_height - margin_top - margin_bottom
+            
             # Determine fit to page mode
             fit_mode = None
+            custom_scale = 100  # Default 100%
+            
             if hasattr(self, 'print_settings') and self.print_settings and hasattr(self.print_settings, 'fit_to_page') and FitToPageMode:
                 fit_mode = self.print_settings.fit_to_page
+                if hasattr(self.print_settings, 'custom_scale'):
+                    custom_scale = self.print_settings.custom_scale
             
             if fit_mode == FitToPageMode.ACTUAL_SIZE if FitToPageMode else None:
                 # Print at actual size (no scaling)
                 scale = 1.0
                 scaled_width = img_width
                 scaled_height = img_height
-            elif fit_mode == FitToPageMode.FIT_TO_PAPER if FitToPageMode else None:
-                # Fit to entire paper (100% of printable area)
-                scale_x = printer_width / img_width
-                scale_y = printer_height / img_height
+            elif fit_mode == FitToPageMode.FIT_TO_PAGE if FitToPageMode else None:
+                # Fit to available area maintaining aspect ratio
+                scale_x = available_width / img_width
+                scale_y = available_height / img_height
                 scale = min(scale_x, scale_y)
                 scaled_width = int(img_width * scale)
                 scaled_height = int(img_height * scale)
+            elif fit_mode == FitToPageMode.FILL if FitToPageMode else None:
+                # Fill entire available area (may crop image)
+                scale_x = available_width / img_width
+                scale_y = available_height / img_height
+                scale = max(scale_x, scale_y)  # Use larger scale to fill
+                scaled_width = int(img_width * scale)
+                scaled_height = int(img_height * scale)
             elif fit_mode == FitToPageMode.SHRINK_TO_FIT if FitToPageMode else None:
-                # Only shrink if image is larger than page
-                scale_x = printer_width / img_width
-                scale_y = printer_height / img_height
+                # Only shrink if image is larger than available area
+                scale_x = available_width / img_width
+                scale_y = available_height / img_height
                 scale = min(scale_x, scale_y, 1.0)  # Don't enlarge
                 scaled_width = int(img_width * scale)
                 scaled_height = int(img_height * scale)
+            elif fit_mode == FitToPageMode.CUSTOM if FitToPageMode else None:
+                # Use custom scale percentage
+                scale = custom_scale / 100.0
+                scaled_width = int(img_width * scale)
+                scaled_height = int(img_height * scale)
             else:
-                # Default: FIT_TO_PAGE or NONE (90% untuk margin)
-                scale_x = (printer_width * 0.9) / img_width
-                scale_y = (printer_height * 0.9) / img_height
+                # Default: Fit to page with 90% margin
+                scale_x = (available_width * 0.9) / img_width
+                scale_y = (available_height * 0.9) / img_height
                 scale = min(scale_x, scale_y)
                 scaled_width = int(img_width * scale)
                 scaled_height = int(img_height * scale)
             
-            # Calculate centered position
-            x = (printer_width - scaled_width) // 2
-            y = (printer_height - scaled_height) // 2
+            # Calculate position based on centering options
+            center_horizontally = True
+            center_vertically = True
+            
+            if hasattr(self, 'print_settings') and self.print_settings:
+                if hasattr(self.print_settings, 'center_horizontally'):
+                    center_horizontally = self.print_settings.center_horizontally
+                if hasattr(self.print_settings, 'center_vertically'):
+                    center_vertically = self.print_settings.center_vertically
+            
+            # Calculate position
+            if center_horizontally:
+                x = margin_left + (available_width - scaled_width) // 2
+            else:
+                x = margin_left
+                
+            if center_vertically:
+                y = margin_top + (available_height - scaled_height) // 2
+            else:
+                y = margin_top
             
             # Print image dengan error handling yang lebih baik
             try:
@@ -834,6 +889,11 @@ class SilentPrintService:
                         if hasattr(self.current_settings, 'color_mode'):
                             if self.current_settings.color_mode == ColorMode.GRAYSCALE:
                                 devmode.dmColor = win32con.DMCOLOR_MONOCHROME
+                            elif self.current_settings.color_mode == ColorMode.BLACK_WHITE:
+                                devmode.dmColor = win32con.DMCOLOR_MONOCHROME
+                                # Set additional properties for true black and white
+                                if hasattr(devmode, 'dmPrintQuality'):
+                                    devmode.dmPrintQuality = win32con.DMRES_DRAFT
                             elif self.current_settings.color_mode == ColorMode.COLOR:
                                 devmode.dmColor = win32con.DMCOLOR_COLOR
                         

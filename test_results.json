@@ -1,0 +1,158 @@
+[
+  {
+    "test_name": "Server Connection",
+    "status": "PASS",
+    "details": "Server is accessible",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "Printer Discovery",
+    "status": "PASS",
+    "details": "Found 1 printer(s)",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "File Upload (PDF)",
+    "status": "PASS",
+    "details": "File ID: 20250822_104705_test_multipage.pdf",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "File Upload (DOCX)",
+    "status": "PASS",
+    "details": "File ID: 20250822_104705_test_document.docx",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "File Upload (TXT)",
+    "status": "PASS",
+    "details": "File ID: 20250822_104705_test_document.txt",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Default Settings",
+    "status": "PASS",
+    "details": "Job ID: ff7c06f1-b338-4281-84f1-6b9ff684dfcb",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Landscape + Grayscale",
+    "status": "PASS",
+    "details": "Job ID: 99e8ac8a-5b8d-4657-bf1d-f68c293c3043",
+    "timestamp": "2025-08-22 10:47:05"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Narrow Margins + 75% Scale",
+    "status": "PASS",
+    "details": "Job ID: 8ac8b281-1c61-46c3-93a6-fd83319a14e8",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Wide Margins + 125% Scale",
+    "status": "PASS",
+    "details": "Job ID: 524fb731-7dca-418d-9196-4f81e11ed327",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Minimal Margins + Fit to Page",
+    "status": "PASS",
+    "details": "Job ID: 4b464c30-163b-4326-aa13-02668c4c6d18",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - Page Range Test",
+    "status": "PASS",
+    "details": "Job ID: c94b88f7-e5c2-414c-a79a-23660549c8d7",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Default Settings",
+    "status": "PASS",
+    "details": "Job ID: ca9e40f5-4d18-47d4-8a61-45fbf993026b",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Landscape + Grayscale",
+    "status": "PASS",
+    "details": "Job ID: 897e2b5f-34b1-4481-a3fd-bbbd588d0823",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Narrow Margins + 75% Scale",
+    "status": "PASS",
+    "details": "Job ID: 6c0700ed-b9b2-4573-a31e-9fa14f19c71b",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Wide Margins + 125% Scale",
+    "status": "PASS",
+    "details": "Job ID: bd357c84-208e-4483-b3b6-3cc0b618ee5a",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Minimal Margins + Fit to Page",
+    "status": "PASS",
+    "details": "Job ID: 7304e2a5-8115-4d83-811c-aa02e7998d1a",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (DOCX) - Page Range Test",
+    "status": "PASS",
+    "details": "Job ID: e82d1787-bb52-4eb9-bc04-a4040d060526",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Default Settings",
+    "status": "PASS",
+    "details": "Job ID: 22ee91c4-e704-4f16-9a46-21ae571d297e",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Landscape + Grayscale",
+    "status": "PASS",
+    "details": "Job ID: 755a14ef-730a-4c4c-b1e3-6a6604a2fe89",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Narrow Margins + 75% Scale",
+    "status": "PASS",
+    "details": "Job ID: ff2a320f-ba16-4b14-bd19-ff4e939b5f4b",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Wide Margins + 125% Scale",
+    "status": "PASS",
+    "details": "Job ID: 7dece723-d671-4963-8608-b55d66a7a4a9",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Minimal Margins + Fit to Page",
+    "status": "PASS",
+    "details": "Job ID: 14c80733-f6c0-46e3-ab95-d13093280ca0",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (TXT) - Page Range Test",
+    "status": "PASS",
+    "details": "Job ID: 8916f614-0a9b-4bf1-9f3b-8ee1383b00b8",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - PDF Fit to Page",
+    "status": "PASS",
+    "details": "Job ID: aa4e72f1-69ce-4a81-adc6-cc17df4ff005",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - PDF Fill Page",
+    "status": "PASS",
+    "details": "Job ID: c60a0fe7-0576-4d04-a15a-dd186c2e6b86",
+    "timestamp": "2025-08-22 10:47:06"
+  },
+  {
+    "test_name": "Print Settings (PDF) - PDF Original Size",
+    "status": "PASS",
+    "details": "Job ID: 1a844a92-35fb-4ba5-8aa4-1148c305fde1",
+    "timestamp": "2025-08-22 10:47:06"
+  }
+]

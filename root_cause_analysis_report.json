@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-08-21T19:18:42.916244",
+  "analysis_type": "root_cause_analysis",
+  "findings": {
+    "communication": {
+      "method": "indirect_shellexecute",
+      "dependencies": [
+        "SumatraPDF",
+        "Adobe Reader",
+        "Default Apps"
+      ],
+      "control_level": "none",
+      "failure_points": "multiple",
+      "root_cause": "INDIRECT_COMMUNICATION"
+    },
+    "configuration": {
+      "parameter_level": "high_level_abstract",
+      "interpretation": "application_dependent",
+      "capability_check": "none",
+      "fallback": "unreliable",
+      "root_cause": "ABSTRACT_PARAMETERS"
+    },
+    "queue_mechanism": {
+      "monitoring_complexity": "very_high",
+      "false_positive_rate": "high",
+      "timing_accuracy": "poor",
+      "overhead": "excessive",
+      "root_cause": "COMPLEX_MONITORING"
+    },
+    "validation": {
+      "completion_logic": "assumption_based",
+      "physical_verification": "none",
+      "progress_tracking": "fake",
+      "success_detection": "unreliable",
+      "root_cause": "FALSE_VALIDATION"
+    },
+    "comparison": {}
+  },
+  "primary_root_cause": "ARCHITECTURAL_MISMATCH",
+  "critical_issues": [
+    "INDIRECT_COMMUNICATION",
+    "FALSE_VALIDATION",
+    "COMPLEX_MONITORING",
+    "ABSTRACT_PARAMETERS"
+  ],
+  "recommended_approach": "COMPLETE_ARCHITECTURE_REFACTOR",
+  "success_probability_current": "30%",
+  "success_probability_after_fix": "95%"
+}

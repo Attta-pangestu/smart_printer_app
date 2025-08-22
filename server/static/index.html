@@ -507,6 +507,26 @@
             width: auto;
             margin-right: 8px;
         }
+        
+        .help-text {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        
+        .error-message {
+            display: block;
+            font-size: 12px;
+            color: #dc2626;
+            margin-top: 4px;
+            padding: 4px 8px;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
 
         .advanced-settings {
             border-top: 1px solid #eee;
@@ -554,6 +574,27 @@
         .margin-item input {
             flex: 1;
             padding: 8px;
+        }
+        
+        .unit-label {
+            min-width: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .scale-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .scale-controls input[type="range"] {
+            flex: 2;
+        }
+        
+        .scale-controls input[type="number"] {
+            width: 70px;
+            padding: 4px 8px;
         }
 
         .custom-paper {
@@ -757,6 +798,110 @@
             gap: 16px;
             margin-bottom: 32px;
             padding: 20px;
+        }
+        
+        /* Print Method Selection Styles */
+        .print-method-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .print-method-section h3 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .method-selection {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .method-option {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .method-option:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        
+        .method-label {
+            display: block;
+            padding: 16px;
+            cursor: pointer;
+            margin: 0;
+            font-weight: normal;
+        }
+        
+        .method-label input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .method-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-left: 32px;
+            position: relative;
+        }
+        
+        .method-content::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 2px;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .method-label input[type="radio"]:checked + .method-content::before {
+            border-color: #3b82f6;
+            background: #3b82f6;
+            box-shadow: inset 0 0 0 3px white;
+        }
+        
+        .method-label input[type="radio"]:checked + .method-content {
+            color: #1e293b;
+        }
+        
+        .method-option:has(input[type="radio"]:checked) {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        
+        .method-title {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #1e293b;
+        }
+        
+        .method-description {
+            font-size: 0.95em;
+            color: #475569;
+            font-weight: 500;
+        }
+        
+        .method-details {
+            font-size: 0.85em;
+            color: #64748b;
+            line-height: 1.4;
+        }
             background: linear-gradient(145deg, #f8fafc, #ffffff);
             border-radius: var(--border-radius);
             border: 2px solid #e2e8f0;
@@ -1093,15 +1238,71 @@
                     </div>
                 </div>
                 
+                <!-- Print Method Selection -->
+                <div class="print-method-section">
+                    <h3>🎯 Metode Pencetakan Full Page</h3>
+                    <div class="method-selection">
+                        <div class="method-option">
+                            <label class="method-label">
+                                <input type="radio" name="printMethod" value="auto_rotation" id="autoRotationMethod" checked>
+                                <div class="method-content">
+                                    <div class="method-title">Auto Rotation</div>
+                                    <div class="method-description">Rotasi otomatis untuk penggunaan kertas optimal (81.9%)</div>
+                                    <div class="method-details">Cocok untuk dokumen landscape, memaksimalkan area cetak</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="method-option">
+                            <label class="method-label">
+                                <input type="radio" name="printMethod" value="full_page" id="fullPageMethod">
+                                <div class="method-content">
+                                    <div class="method-title">Full Page Stretch</div>
+                                    <div class="method-description">Pencetakan penuh kertas (100%) dengan risiko pemotongan</div>
+                                    <div class="method-details">Mengisi seluruh kertas, mungkin memotong sebagian konten</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="method-option">
+                            <label class="method-label">
+                                <input type="radio" name="printMethod" value="fit_to_page" id="fitToPageMethod">
+                                <div class="method-content">
+                                    <div class="method-title">Fit to Page (Aman)</div>
+                                    <div class="method-description">Metode aman tanpa pemotongan (40.9% penggunaan kertas)</div>
+                                    <div class="method-details">Mempertahankan proporsi dokumen, tidak ada konten terpotong</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Advanced Settings -->
                 <div class="advanced-settings">
                     <h3>🔧 Pengaturan Lanjutan</h3>
                     
                     <div class="settings-grid">
                         <div class="setting-group">
+                            <label for="scalePreset">Preset Skala:</label>
+                            <select id="scalePreset" onchange="applyScalePreset()">
+                                <option value="custom">Kustom</option>
+                                <option value="100">Normal (100%)</option>
+                                <option value="fit-to-page" selected>Fit to Page</option>
+                                <option value="fit-to-width">Fit to Width</option>
+                                <option value="200">2x Besar (200%)</option>
+                                <option value="150">1.5x Besar (150%)</option>
+                                <option value="75">Kecil (75%)</option>
+                                <option value="50">Sangat Kecil (50%)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group">
                             <label for="scale">Scale (%):</label>
-                            <input type="range" id="scale" min="25" max="400" value="100" oninput="updateScaleValue()">
-                            <span id="scaleValue">100%</span>
+                            <div class="scale-controls">
+                                <input type="range" id="scale" min="10" max="500" value="100" oninput="updateScaleValue()">
+                                <input type="number" id="scaleInput" min="10" max="500" value="100" onchange="updateScaleFromInput()">
+                                <span>%</span>
+                            </div>
                         </div>
                         
                         <div class="setting-group">
@@ -1117,8 +1318,21 @@
                         </div>
                         
                         <div class="setting-group">
+                            <label for="pageRangeType">Pilih Halaman:</label>
+                            <select id="pageRangeType" onchange="togglePageRangeInput()">
+                                <option value="all" selected>Semua Halaman</option>
+                                <option value="current">Halaman Saat Ini</option>
+                                <option value="custom">Range Kustom</option>
+                                <option value="odd">Halaman Ganjil</option>
+                                <option value="even">Halaman Genap</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-group" id="pageRangeCustomGroup" style="display: none;">
                             <label for="pageRange">Range Halaman:</label>
-                            <input type="text" id="pageRange" placeholder="Contoh: 1-5,8,11-13">
+                            <input type="text" id="pageRange" placeholder="Contoh: 1-5,8,11-13 atau 1,3,5-10">
+                            <small class="help-text">Format: 1-5 (rentang), 1,3,5 (individual), atau kombinasi 1-3,5,7-10</small>
+                            <div id="pageRangeError" class="error-message" style="display: none;"></div>
                         </div>
                         
                         <div class="setting-group">
@@ -1138,24 +1352,60 @@
                     
                     <!-- Margin Settings -->
                     <div class="margin-settings">
-                        <h4>📏 Margin (inci)</h4>
+                        <h4>📏 Margin</h4>
+                        
+                        <!-- Margin Presets -->
+                        <div class="setting-group">
+                            <label for="marginPreset">Preset Margin:</label>
+                            <select id="marginPreset" onchange="applyMarginPreset()">
+                                <option value="custom">Kustom</option>
+                                <option value="normal" selected>Normal (0.5")</option>
+                                <option value="narrow">Sempit (0.25")</option>
+                                <option value="wide">Lebar (1.0")</option>
+                                <option value="minimal">Minimal (0.1")</option>
+                                <option value="none">Tanpa Margin (0")</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Unit Selection -->
+                        <div class="setting-group">
+                            <label for="marginUnit">Unit:</label>
+                            <select id="marginUnit" onchange="convertMarginUnits()">
+                                <option value="inch" selected>Inci</option>
+                                <option value="mm">Milimeter</option>
+                                <option value="cm">Sentimeter</option>
+                            </select>
+                        </div>
+                        
                         <div class="margin-grid">
                             <div class="margin-item">
                                 <label for="marginTop">Atas:</label>
-                                <input type="number" id="marginTop" value="0.5" step="0.1" min="0" max="2">
+                                <input type="number" id="marginTop" value="0.5" step="0.1" min="0" max="5" onchange="updateMarginPreset()">
+                                <span class="unit-label">"</span>
                             </div>
                             <div class="margin-item">
                                 <label for="marginBottom">Bawah:</label>
-                                <input type="number" id="marginBottom" value="0.5" step="0.1" min="0" max="2">
+                                <input type="number" id="marginBottom" value="0.5" step="0.1" min="0" max="5" onchange="updateMarginPreset()">
+                                <span class="unit-label">"</span>
                             </div>
                             <div class="margin-item">
                                 <label for="marginLeft">Kiri:</label>
-                                <input type="number" id="marginLeft" value="0.5" step="0.1" min="0" max="2">
+                                <input type="number" id="marginLeft" value="0.5" step="0.1" min="0" max="5" onchange="updateMarginPreset()">
+                                <span class="unit-label">"</span>
                             </div>
                             <div class="margin-item">
                                 <label for="marginRight">Kanan:</label>
-                                <input type="number" id="marginRight" value="0.5" step="0.1" min="0" max="2">
+                                <input type="number" id="marginRight" value="0.5" step="0.1" min="0" max="5" onchange="updateMarginPreset()">
+                                <span class="unit-label">"</span>
                             </div>
+                        </div>
+                        
+                        <!-- Mirror Margins -->
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="mirrorMargins">
+                                Mirror Margins (untuk binding)
+                            </label>
                         </div>
                     </div>
                     
@@ -1290,6 +1540,28 @@
             
             // Add event listeners
             document.getElementById('paperSize').addEventListener('change', toggleCustomPaper);
+            
+            // Margin and scaling event listeners
+            if (document.getElementById('marginPreset')) {
+                document.getElementById('marginPreset').addEventListener('change', applyMarginPreset);
+            }
+            if (document.getElementById('marginUnit')) {
+                document.getElementById('marginUnit').addEventListener('change', convertMarginUnits);
+            }
+            if (document.getElementById('scalePreset')) {
+                document.getElementById('scalePreset').addEventListener('change', applyScalePreset);
+            }
+            if (document.getElementById('scaleInput')) {
+                document.getElementById('scaleInput').addEventListener('input', updateScaleFromInput);
+            }
+            
+            // Add change listeners to margin inputs
+            ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateMarginPreset);
+                }
+            });
             
             // Auto-refresh every 5 seconds
             setInterval(() => {
@@ -1776,12 +2048,249 @@
         // Settings management
         function updateScaleValue() {
             const scale = document.getElementById('scale').value;
-            document.getElementById('scaleValue').textContent = `${scale}%`;
+            document.getElementById('scaleInput').value = scale;
+            
+            // Update preset to custom if manually changed
+            if (document.getElementById('scalePreset').value !== 'custom' && 
+                document.getElementById('scalePreset').value !== scale) {
+                document.getElementById('scalePreset').value = 'custom';
+            }
             
             // Update preview if PDF is loaded
             if (window.currentPDF && currentPage) {
                 renderPDFPage(window.currentPDF, currentPage);
             }
+        }
+        
+        function updateScaleFromInput() {
+            const scale = document.getElementById('scaleInput').value;
+            document.getElementById('scale').value = scale;
+            
+            // Update preset to custom if manually changed
+            if (document.getElementById('scalePreset').value !== 'custom' && 
+                document.getElementById('scalePreset').value !== scale) {
+                document.getElementById('scalePreset').value = 'custom';
+            }
+            
+            // Update preview if PDF is loaded
+            if (window.currentPDF && currentPage) {
+                renderPDFPage(window.currentPDF, currentPage);
+            }
+        }
+        
+        function applyScalePreset() {
+            const preset = document.getElementById('scalePreset').value;
+            
+            if (preset === 'custom') {
+                return;
+            }
+            
+            let scaleValue = 100;
+            
+            switch (preset) {
+                case 'fit-to-page':
+                    // Calculate fit to page scale dynamically
+                    if (window.currentPDF && currentPage) {
+                        fitToPage().then(() => {
+                            // Update the scale inputs with the calculated value
+                            document.getElementById('scale').value = currentZoom;
+                            document.getElementById('scaleInput').value = currentZoom;
+                        });
+                        return;
+                    }
+                    scaleValue = 100;
+                    break;
+                case 'fit-to-width':
+                    // Calculate fit to width scale dynamically
+                    if (window.currentPDF && currentPage) {
+                        fitToWidth().then(() => {
+                            // Update the scale inputs with the calculated value
+                            document.getElementById('scale').value = currentZoom;
+                            document.getElementById('scaleInput').value = currentZoom;
+                        });
+                        return;
+                    }
+                    scaleValue = 100;
+                    break;
+                default:
+                    scaleValue = parseInt(preset);
+            }
+            
+            document.getElementById('scale').value = scaleValue;
+            document.getElementById('scaleInput').value = scaleValue;
+            
+            // Update preview if PDF is loaded
+            if (window.currentPDF && currentPage) {
+                renderPDFPage(window.currentPDF, currentPage);
+            }
+        }
+        
+        // Margin preset functions
+        function applyMarginPreset() {
+            const preset = document.getElementById('marginPreset').value;
+            const unit = document.getElementById('marginUnit').value;
+            
+            if (preset === 'custom') {
+                return;
+            }
+            
+            let marginValue = 0.5; // default in inches
+            
+            switch (preset) {
+                case 'normal':
+                    marginValue = 0.5;
+                    break;
+                case 'narrow':
+                    marginValue = 0.25;
+                    break;
+                case 'wide':
+                    marginValue = 1.0;
+                    break;
+                case 'minimal':
+                    marginValue = 0.1;
+                    break;
+                case 'none':
+                    marginValue = 0;
+                    break;
+            }
+            
+            // Convert to current unit
+            const convertedValue = convertFromInches(marginValue, unit);
+            
+            document.getElementById('marginTop').value = convertedValue.toFixed(2);
+            document.getElementById('marginBottom').value = convertedValue.toFixed(2);
+            document.getElementById('marginLeft').value = convertedValue.toFixed(2);
+            document.getElementById('marginRight').value = convertedValue.toFixed(2);
+        }
+        
+        function updateMarginPreset() {
+            // Set to custom when margins are manually changed
+            document.getElementById('marginPreset').value = 'custom';
+        }
+        
+        function convertMarginUnits() {
+            const newUnit = document.getElementById('marginUnit').value;
+            const oldUnit = document.querySelector('.unit-label').textContent;
+            
+            // Get current values
+            const topValue = parseFloat(document.getElementById('marginTop').value) || 0;
+            const bottomValue = parseFloat(document.getElementById('marginBottom').value) || 0;
+            const leftValue = parseFloat(document.getElementById('marginLeft').value) || 0;
+            const rightValue = parseFloat(document.getElementById('marginRight').value) || 0;
+            
+            // Convert to inches first, then to new unit
+            const topInches = convertToInches(topValue, getUnitFromSymbol(oldUnit));
+            const bottomInches = convertToInches(bottomValue, getUnitFromSymbol(oldUnit));
+            const leftInches = convertToInches(leftValue, getUnitFromSymbol(oldUnit));
+            const rightInches = convertToInches(rightValue, getUnitFromSymbol(oldUnit));
+            
+            // Convert from inches to new unit
+            document.getElementById('marginTop').value = convertFromInches(topInches, newUnit).toFixed(2);
+            document.getElementById('marginBottom').value = convertFromInches(bottomInches, newUnit).toFixed(2);
+            document.getElementById('marginLeft').value = convertFromInches(leftInches, newUnit).toFixed(2);
+            document.getElementById('marginRight').value = convertFromInches(rightInches, newUnit).toFixed(2);
+            
+            // Update unit labels and step
+            updateUnitLabels(newUnit);
+            updateMarginPreset(); // Set to custom after conversion
+        }
+        
+        function convertToInches(value, unit) {
+            switch (unit) {
+                case 'mm': return value / 25.4;
+                case 'cm': return value / 2.54;
+                case 'inch': return value;
+                default: return value;
+            }
+        }
+        
+        function convertFromInches(value, unit) {
+            switch (unit) {
+                case 'mm': return value * 25.4;
+                case 'cm': return value * 2.54;
+                case 'inch': return value;
+                default: return value;
+            }
+        }
+        
+        function getUnitFromSymbol(symbol) {
+            switch (symbol) {
+                case '"': return 'inch';
+                case 'mm': return 'mm';
+                case 'cm': return 'cm';
+                default: return 'inch';
+            }
+        }
+        
+        function updateUnitLabels(unit) {
+            const labels = document.querySelectorAll('.unit-label');
+            const symbol = unit === 'inch' ? '"' : unit;
+            const step = unit === 'mm' ? '1' : (unit === 'cm' ? '0.1' : '0.1');
+            const max = unit === 'mm' ? '127' : (unit === 'cm' ? '12.7' : '5');
+            
+            labels.forEach(label => {
+                label.textContent = symbol;
+            });
+            
+            // Update input steps and max values
+            ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'].forEach(id => {
+                const input = document.getElementById(id);
+                input.step = step;
+                input.max = max;
+            });
+        }
+        
+        function togglePageRangeInput() {
+            const pageRangeType = document.getElementById('pageRangeType').value;
+            const customGroup = document.getElementById('pageRangeCustomGroup');
+            const pageRangeInput = document.getElementById('pageRange');
+            const errorDiv = document.getElementById('pageRangeError');
+            
+            if (pageRangeType === 'custom') {
+                customGroup.style.display = 'block';
+                pageRangeInput.addEventListener('input', validatePageRange);
+            } else {
+                customGroup.style.display = 'none';
+                pageRangeInput.value = '';
+                errorDiv.style.display = 'none';
+                pageRangeInput.removeEventListener('input', validatePageRange);
+            }
+        }
+        
+        function validatePageRange() {
+            const pageRangeInput = document.getElementById('pageRange');
+            const errorDiv = document.getElementById('pageRangeError');
+            const value = pageRangeInput.value.trim();
+            
+            if (!value) {
+                errorDiv.style.display = 'none';
+                return true;
+            }
+            
+            // Regex pattern for page ranges: 1-5,8,11-13
+            const pageRangePattern = /^\d+(-\d+)?(,\d+(-\d+)?)*$/;
+            
+            if (!pageRangePattern.test(value)) {
+                errorDiv.textContent = 'Format tidak valid. Gunakan format: 1-5,8,11-13';
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            // Additional validation: check if ranges are valid (start <= end)
+            const parts = value.split(',');
+            for (let part of parts) {
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(num => parseInt(num));
+                    if (start >= end) {
+                        errorDiv.textContent = 'Range tidak valid: angka awal harus lebih kecil dari angka akhir';
+                        errorDiv.style.display = 'block';
+                        return false;
+                    }
+                }
+            }
+            
+            errorDiv.style.display = 'none';
+            return true;
         }
         
         // Add event listeners for real-time preview updates
@@ -1951,6 +2460,17 @@
                     }
                 }
                 
+                // Validate page range if custom is selected
+                const pageRangeType = document.getElementById('pageRangeType').value;
+                if (pageRangeType === 'custom' && !validatePageRange()) {
+                    showMessage('Format range halaman tidak valid', 'error');
+                    return;
+                }
+                
+                // Get selected print method
+                const selectedPrintMethod = document.querySelector('input[name="printMethod"]:checked')?.value || 'auto_rotation';
+                console.log('Selected print method:', selectedPrintMethod);
+                
                 // Collect all print settings
                 const printSettings = {
                     copies: parseInt(document.getElementById('copies').value) || 1,
@@ -1961,8 +2481,11 @@
                     duplex: document.getElementById('duplex').value,
                     scale: parseInt(document.getElementById('scale').value) || 100,
                     pages_per_sheet: parseInt(document.getElementById('pagesPerSheet').value) || 1,
-                    page_range: document.getElementById('pageRange').value || '',
+                    page_range_type: pageRangeType,
+                    page_range: pageRangeType === 'custom' ? document.getElementById('pageRange').value || '' : '',
                     collate: document.getElementById('collate')?.checked || false,
+                    // Add print method to settings
+                    print_method: selectedPrintMethod,
                 reverse_order: (function() {
                     const element = document.getElementById('reverseOrder');
                     return element && element.checked ? element.checked : false;
@@ -2189,6 +2712,11 @@
                 // Store PDF reference for navigation
                 window.currentPDF = pdf;
                 
+                // Apply default fit-to-page setting after PDF is loaded
+                setTimeout(() => {
+                    applyScalePreset();
+                }, 100);
+                
             } catch (error) {
                 console.error('Error loading PDF:', error);
                 previewContainer.innerHTML = `
@@ -2358,15 +2886,28 @@
         
         function getCurrentPrintSettings() {
             try {
+                const marginUnit = document.getElementById('marginUnit')?.value || 'inch';
+                const scalePreset = document.getElementById('scalePreset')?.value || 'custom';
+                const marginPreset = document.getElementById('marginPreset')?.value || 'custom';
+                
+                // Get margin values and convert to inches for backend consistency
+                const getMarginInInches = (value, unit) => {
+                    const numValue = parseFloat(value) || 0.5;
+                    return convertToInches(numValue, unit);
+                };
+                
                 return {
                     orientation: document.getElementById('orientation')?.value || 'portrait',
                     scale: parseInt(document.getElementById('scale')?.value) || 100,
+                    scalePreset: scalePreset,
                     colorMode: document.getElementById('colorMode')?.value || 'color',
                     margins: {
-                        top: parseFloat(document.getElementById('marginTop')?.value) || 0.5,
-                        bottom: parseFloat(document.getElementById('marginBottom')?.value) || 0.5,
-                        left: parseFloat(document.getElementById('marginLeft')?.value) || 0.5,
-                        right: parseFloat(document.getElementById('marginRight')?.value) || 0.5
+                        top: getMarginInInches(document.getElementById('marginTop')?.value, marginUnit),
+                        bottom: getMarginInInches(document.getElementById('marginBottom')?.value, marginUnit),
+                        left: getMarginInInches(document.getElementById('marginLeft')?.value, marginUnit),
+                        right: getMarginInInches(document.getElementById('marginRight')?.value, marginUnit),
+                        unit: marginUnit,
+                        preset: marginPreset
                     }
                 };
             } catch (error) {
@@ -2592,8 +3133,8 @@
         // Apply preview settings manually
         function applyPreviewSettings() {
             try {
-                if (currentPDF && currentPageNum) {
-                    renderPDFPage(currentPDF, currentPageNum);
+                if (window.currentPDF && currentPage) {
+                    renderPDFPage(window.currentPDF, currentPage);
                     showAlert('Pengaturan telah diterapkan ke preview', 'success');
                 } else {
                     showAlert('Tidak ada PDF yang dimuat untuk diterapkan pengaturan', 'warning');

@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -289,6 +289,99 @@
                                                         <option value="long_edge">Long Edge</option>
                                                         <option value="short_edge">Short Edge</option>
                                                     </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Advanced Print Settings -->
+                                            <div class="card mt-3">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-cogs me-2"></i>
+                                                        Advanced Settings
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <!-- Fit to Page Options -->
+                                                    <div class="mb-3">
+                                                        <label for="fitToPage" class="form-label">Page Scaling</label>
+                                                        <select class="form-select" id="fitToPage">
+                                                            <option value="none">Actual Size (100%)</option>
+                                                            <option value="fit" selected>Fit to Page</option>
+                                                            <option value="fill">Fill Page</option>
+                                                            <option value="shrink">Shrink to Fit</option>
+                                                            <option value="custom">Custom Scale</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <!-- Custom Scale -->
+                                                    <div class="mb-3" id="customScaleDiv" style="display: none;">
+                                                        <label for="customScale" class="form-label">Custom Scale (%)</label>
+                                                        <div class="input-group">
+                                                            <input type="number" class="form-control" id="customScale" value="100" min="10" max="500">
+                                                            <span class="input-group-text">%</span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Page Range -->
+                                                    <div class="mb-3">
+                                                        <label for="pageRange" class="form-label">Page Range</label>
+                                                        <select class="form-select" id="pageRangeType" onchange="togglePageRange()">
+                                                            <option value="all">All Pages</option>
+                                                            <option value="current">Current Page</option>
+                                                            <option value="range">Page Range</option>
+                                                            <option value="selection">Selection</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <!-- Custom Page Range Input -->
+                                                    <div class="mb-3" id="pageRangeDiv" style="display: none;">
+                                                        <label for="pageRange" class="form-label">Pages (e.g., 1-5, 1,3,5)</label>
+                                                        <input type="text" class="form-control" id="pageRange" placeholder="1-5, 1,3,5">
+                                                        <div class="form-text">Examples: 1-5 (pages 1 to 5), 1,3,5 (pages 1, 3, and 5), 1-3,5,7-9</div>
+                                                    </div>
+                                                    
+                                                    <!-- Margins -->
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="marginTop" class="form-label">Top Margin (mm)</label>
+                                                            <input type="number" class="form-control" id="marginTop" value="20" min="0" max="50">
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="marginBottom" class="form-label">Bottom Margin (mm)</label>
+                                                            <input type="number" class="form-control" id="marginBottom" value="20" min="0" max="50">
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="marginLeft" class="form-label">Left Margin (mm)</label>
+                                                            <input type="number" class="form-control" id="marginLeft" value="20" min="0" max="50">
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="marginRight" class="form-label">Right Margin (mm)</label>
+                                                            <input type="number" class="form-control" id="marginRight" value="20" min="0" max="50">
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Positioning -->
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="centerHorizontally" checked>
+                                                                <label class="form-check-label" for="centerHorizontally">
+                                                                    Center Horizontally
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" id="centerVertically" checked>
+                                                                <label class="form-check-label" for="centerVertically">
+                                                                    Center Vertically
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             

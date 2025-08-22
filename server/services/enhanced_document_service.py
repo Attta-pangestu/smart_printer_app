@@ -100,7 +100,7 @@ class EnhancedDocumentService:
             logger.info(f"Settings: {final_settings}")
             
             # Step 1: Convert to PDF if needed
-            pdf_path = self._convert_to_pdf(input_file_path, file_format)
+            pdf_path = self._convert_to_pdf(input_file_path, file_format, final_settings)
             
             # Step 2: Apply manipulations
             manipulated_pdf = self._apply_document_manipulations(pdf_path, final_settings)
@@ -155,7 +155,7 @@ class EnhancedDocumentService:
         
         return 'unknown'
     
-    def _convert_to_pdf(self, input_path: str, file_format: str) -> str:
+    def _convert_to_pdf(self, input_path: str, file_format: str, settings: Dict[str, Any] = None) -> str:
         """Konversi berbagai format ke PDF"""
         if file_format == 'pdf':
             return input_path
@@ -166,7 +166,7 @@ class EnhancedDocumentService:
         
         try:
             if file_format == 'word':
-                self._convert_word_to_pdf(input_path, str(pdf_output))
+                self._convert_word_to_pdf(input_path, str(pdf_output), settings)
             elif file_format == 'excel':
                 self._convert_excel_to_pdf(input_path, str(pdf_output))
             elif file_format == 'image':
@@ -181,11 +181,19 @@ class EnhancedDocumentService:
             logger.error(f"Error converting {file_format} to PDF: {e}")
             raise
     
-    def _convert_word_to_pdf(self, input_path: str, output_path: str):
-        """Konversi Word document ke PDF"""
+    def _convert_word_to_pdf(self, input_path: str, output_path: str, settings: Dict[str, Any] = None):
+        """Konversi Word document ke PDF dengan pengaturan cetak"""
         try:
-            # Using docx2pdf for Windows
-            docx_to_pdf(input_path, output_path)
+            if settings and input_path.endswith('.docx'):
+                # Apply Word-specific settings before conversion
+                temp_docx_path = self._apply_word_settings(input_path, settings)
+                docx_to_pdf(temp_docx_path, output_path)
+                # Clean up temporary file
+                if temp_docx_path != input_path:
+                    os.remove(temp_docx_path)
+            else:
+                # Standard conversion without settings
+                docx_to_pdf(input_path, output_path)
         except Exception as e:
             logger.error(f"Error converting Word to PDF: {e}")
             # Fallback: create a simple PDF with text content
@@ -245,6 +253,81 @@ class EnhancedDocumentService:
         except Exception as e:
             logger.error(f"Error converting image to PDF: {e}")
             raise
+    
+    def _apply_word_settings(self, input_path: str, settings: Dict[str, Any]) -> str:
+        """Terapkan pengaturan cetak pada dokumen Word"""
+        try:
+            from docx import Document
+            from docx.shared import Inches, Cm, Pt
+            from docx.enum.section import WD_ORIENT
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            
+            # Load the document
+            doc = Document(input_path)
+            
+            # Apply page settings
+            for section in doc.sections:
+                # Set orientation
+                if settings.get('orientation') == 'landscape':
+                    section.orientation = WD_ORIENT.LANDSCAPE
+                    # Swap width and height for landscape
+                    new_width, new_height = section.page_height, section.page_width
+                    section.page_width = new_width
+                    section.page_height = new_height
+                else:
+                    section.orientation = WD_ORIENT.PORTRAIT
+                
+                # Set page size based on paper_size
+                paper_size = settings.get('paper_size', 'A4')
+                if paper_size == 'A4':
+                    section.page_width = Cm(21)
+                    section.page_height = Cm(29.7)
+                elif paper_size == 'LETTER':
+                    section.page_width = Inches(8.5)
+                    section.page_height = Inches(11)
+                elif paper_size == 'LEGAL':
+                    section.page_width = Inches(8.5)
+                    section.page_height = Inches(14)
+                elif paper_size == 'A3':
+                    section.page_width = Cm(29.7)
+                    section.page_height = Cm(42)
+                elif paper_size == 'A5':
+                    section.page_width = Cm(14.8)
+                    section.page_height = Cm(21)
+                
+                # Set margins
+                margin_top = settings.get('margin_top', 2.54)  # Default 1 inch in cm
+                margin_bottom = settings.get('margin_bottom', 2.54)
+                margin_left = settings.get('margin_left', 2.54)
+                margin_right = settings.get('margin_right', 2.54)
+                
+                section.top_margin = Cm(margin_top)
+                section.bottom_margin = Cm(margin_bottom)
+                section.left_margin = Cm(margin_left)
+                section.right_margin = Cm(margin_right)
+            
+            # Apply font and formatting settings if needed
+            if settings.get('color_mode') == 'grayscale':
+                # Convert colors to grayscale (simplified approach)
+                for paragraph in doc.paragraphs:
+                    for run in paragraph.runs:
+                        if run.font.color and run.font.color.rgb:
+                            # Convert to grayscale
+                            rgb = run.font.color.rgb
+                            gray = int(0.299 * rgb.red + 0.587 * rgb.green + 0.114 * rgb.blue)
+                            run.font.color.rgb = (gray, gray, gray)
+            
+            # Save modified document to temporary file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            temp_path = self.temp_dir / f"modified_word_{timestamp}.docx"
+            doc.save(str(temp_path))
+            
+            return str(temp_path)
+            
+        except Exception as e:
+            logger.error(f"Error applying Word settings: {e}")
+            # Return original path if modification fails
+            return input_path
     
     def _create_fallback_pdf(self, input_path: str, output_path: str, doc_type: str):
         """Buat PDF fallback jika konversi gagal"""
@@ -313,9 +396,10 @@ class EnhancedDocumentService:
             pil_img = Image.open(io.BytesIO(img_data))
             
             # Apply color manipulations
-            if settings.get('convert_to_bw') or settings.get('color_mode') == 'black_white':
+            color_mode = settings.get('color_mode')
+            if settings.get('convert_to_bw') or color_mode == 'black_white' or (hasattr(color_mode, 'value') and color_mode.value == 'BLACK_WHITE'):
                 pil_img = self._convert_to_black_white(pil_img)
-            elif settings.get('color_mode') == 'grayscale':
+            elif color_mode == 'grayscale' or (hasattr(color_mode, 'value') and color_mode.value == 'GRAYSCALE'):
                 pil_img = pil_img.convert('L').convert('RGB')
             
             # Apply brightness and contrast
@@ -385,12 +469,45 @@ class EnhancedDocumentService:
                 
                 # Calculate scaling and positioning
                 scale_matrix = self._calculate_scale_matrix(page.rect, target_size, settings)
-                insert_rect = self._calculate_insert_rect(page.rect, target_size, settings, scale_matrix)
                 
-                # Render and insert page
-                zoom = scale_matrix.a
-                mat = fitz.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
+                # Calculate margins
+                margin_left = settings.get('margin_left', 20) * mm
+                margin_top = settings.get('margin_top', 20) * mm
+                margin_right = settings.get('margin_right', 20) * mm
+                margin_bottom = settings.get('margin_bottom', 20) * mm
+                
+                # Available space
+                available_width = target_size[0] - margin_left - margin_right
+                available_height = target_size[1] - margin_top - margin_bottom
+                
+                # Calculate scaled dimensions
+                scaled_width = page.rect.width * scale_matrix.a
+                scaled_height = page.rect.height * scale_matrix.d
+                
+                # When fit_to_page is enabled, center content to distribute margins evenly
+                fit_to_page = settings.get('fit_to_page', False)
+                
+                if fit_to_page:
+                    # For fit_to_page, always center to ensure even margins
+                    x = margin_left + (available_width - scaled_width) / 2
+                    y = margin_top + (available_height - scaled_height) / 2
+                else:
+                    # Use original centering settings
+                    if settings.get('center_horizontally'):
+                        x = margin_left + (available_width - scaled_width) / 2
+                    else:
+                        x = margin_left
+                    
+                    if settings.get('center_vertically'):
+                        y = margin_top + (available_height - scaled_height) / 2
+                    else:
+                        y = margin_top
+                
+                # Create insert rect with correct position and scaled size
+                insert_rect = fitz.Rect(x, y, x + scaled_width, y + scaled_height)
+                
+                # Render page at original size, then let insert_image handle the scaling
+                pix = page.get_pixmap()
                 
                 new_page.insert_image(insert_rect, pixmap=pix)
             
@@ -427,8 +544,18 @@ class EnhancedDocumentService:
         scale = settings.get('scale', 100) / 100.0
         
         if settings.get('fit_to_page'):
-            scale_x = target_size[0] / page_rect.width
-            scale_y = target_size[1] / page_rect.height
+            # Calculate available space after margins
+            margin_left = settings.get('margin_left', 20) * mm
+            margin_top = settings.get('margin_top', 20) * mm
+            margin_right = settings.get('margin_right', 20) * mm
+            margin_bottom = settings.get('margin_bottom', 20) * mm
+            
+            available_width = target_size[0] - margin_left - margin_right
+            available_height = target_size[1] - margin_top - margin_bottom
+            
+            # Calculate scale based on available space, not full page size
+            scale_x = available_width / page_rect.width
+            scale_y = available_height / page_rect.height
             scale = min(scale_x, scale_y) * scale
         
         return fitz.Matrix(scale, scale)
@@ -449,40 +576,82 @@ class EnhancedDocumentService:
         available_width = target_size[0] - margin_left - margin_right
         available_height = target_size[1] - margin_top - margin_bottom
         
-        # Calculate position
-        if settings.get('center_horizontally'):
-            x = margin_left + (available_width - scaled_width) / 2
-        else:
-            x = margin_left
+        # When fit_to_page is enabled, center content to distribute margins evenly
+        fit_to_page = settings.get('fit_to_page', False)
         
-        if settings.get('center_vertically'):
+        if fit_to_page:
+            # For fit_to_page, always center to ensure even margins
+            x = margin_left + (available_width - scaled_width) / 2
             y = margin_top + (available_height - scaled_height) / 2
         else:
-            y = margin_top
+            # Use original centering settings
+            if settings.get('center_horizontally'):
+                x = margin_left + (available_width - scaled_width) / 2
+            else:
+                x = margin_left
+            
+            if settings.get('center_vertically'):
+                y = margin_top + (available_height - scaled_height) / 2
+            else:
+                y = margin_top
         
         return fitz.Rect(x, y, x + scaled_width, y + scaled_height)
     
     def _get_pages_to_process(self, pdf_document: fitz.Document, settings: Dict[str, Any]) -> List[int]:
         """Dapatkan daftar halaman yang akan diproses berdasarkan pengaturan"""
         total_pages = len(pdf_document)
-        page_range = settings.get('page_range', 'all')
+        page_range_type = settings.get('page_range_type', 'all')
+        page_range = settings.get('page_range', '')
+        current_page = settings.get('current_page', 1)  # Default to page 1
         
-        if page_range == 'all':
+        if page_range_type == 'all':
             return list(range(total_pages))
-        
-        # Parse page range (e.g., "1-5", "1,3,5", "1-3,5,7-9")
+        elif page_range_type == 'current':
+            # Convert to 0-based index and ensure it's within bounds
+            current_idx = max(0, min(current_page - 1, total_pages - 1))
+            return [current_idx]
+        elif page_range_type == 'odd':
+            return [i for i in range(total_pages) if (i + 1) % 2 == 1]  # 1, 3, 5, ...
+        elif page_range_type == 'even':
+            return [i for i in range(total_pages) if (i + 1) % 2 == 0]  # 2, 4, 6, ...
+        elif page_range_type == 'custom' and page_range:
+            return self._parse_page_range(page_range, total_pages)
+        else:
+            # Default ke semua halaman jika tidak valid
+            return list(range(total_pages))
+    
+    def _parse_page_range(self, page_range: str, total_pages: int) -> List[int]:
+        """Parse page range string seperti '1-5,8,11-13' menjadi list page numbers (0-indexed)"""
         pages = []
-        for part in page_range.split(','):
-            part = part.strip()
-            if '-' in part:
-                start, end = map(int, part.split('-'))
-                pages.extend(range(start - 1, min(end, total_pages)))
-            else:
-                page_num = int(part) - 1
-                if 0 <= page_num < total_pages:
-                    pages.append(page_num)
         
-        return sorted(list(set(pages)))
+        try:
+            # Split by comma untuk mendapatkan range atau single pages
+            parts = [part.strip() for part in page_range.split(',')]
+            
+            for part in parts:
+                if '-' in part:
+                    # Range seperti '1-5'
+                    start, end = part.split('-', 1)
+                    start_page = max(1, min(int(start.strip()), total_pages))
+                    end_page = max(1, min(int(end.strip()), total_pages))
+                    
+                    # Tambahkan range (convert to 0-indexed)
+                    for page_num in range(start_page - 1, end_page):
+                        if page_num not in pages:
+                            pages.append(page_num)
+                else:
+                    # Single page seperti '8'
+                    page_num = max(1, min(int(part.strip()), total_pages))
+                    if (page_num - 1) not in pages:  # Convert to 0-indexed
+                        pages.append(page_num - 1)
+            
+            # Sort pages
+            pages.sort()
+            return pages
+            
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Invalid page range format '{page_range}': {e}. Using all pages.")
+            return list(range(total_pages))
     
     def _get_document_info(self, pdf_path: str) -> Dict[str, Any]:
         """Dapatkan informasi dokumen PDF"""

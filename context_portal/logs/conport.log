@@ -19,3 +19,21 @@
 2025-08-21 07:52:04,759 - INFO - context_portal_mcp.main - Pre-warming database connection for workspace: D:\Gawean Rebinmas\Driver_Epson_L120
 2025-08-21 07:52:04,768 - INFO - context_portal_mcp.db.database - Alembic: Script directory D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\alembic confirmed to exist by Python.
 2025-08-21 07:52:04,768 - INFO - context_portal_mcp.db.database - Running Alembic migrations for database: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\context.db
+2025-08-21 16:34:02,994 - INFO - context_portal_mcp.main - File logging configured to: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\./logs/conport.log
+2025-08-21 16:34:02,994 - INFO - context_portal_mcp.main - Parsed CLI args: Namespace(host='127.0.0.1', port=8000, workspace_id='D:\\Gawean Rebinmas\\Driver_Epson_L120', mode='stdio', log_file='./logs/conport.log', log_level='INFO')
+2025-08-21 16:34:02,999 - INFO - context_portal_mcp.main - Starting ConPort in STDIO mode using FastMCP for initial CLI arg workspace_id: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-21 16:34:02,999 - INFO - context_portal_mcp.main - Pre-warming database connection for workspace: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-21 16:34:03,006 - INFO - context_portal_mcp.db.database - Alembic: Script directory D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\alembic confirmed to exist by Python.
+2025-08-21 16:34:03,006 - INFO - context_portal_mcp.db.database - Running Alembic migrations for database: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\context.db
+2025-08-21 17:45:11,350 - INFO - context_portal_mcp.main - File logging configured to: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\./logs/conport.log
+2025-08-21 17:45:11,351 - INFO - context_portal_mcp.main - Parsed CLI args: Namespace(host='127.0.0.1', port=8000, workspace_id='D:\\Gawean Rebinmas\\Driver_Epson_L120', mode='stdio', log_file='./logs/conport.log', log_level='INFO')
+2025-08-21 17:45:11,351 - INFO - context_portal_mcp.main - Starting ConPort in STDIO mode using FastMCP for initial CLI arg workspace_id: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-21 17:45:11,352 - INFO - context_portal_mcp.main - Pre-warming database connection for workspace: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-21 17:45:11,354 - INFO - context_portal_mcp.db.database - Alembic: Script directory D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\alembic confirmed to exist by Python.
+2025-08-21 17:45:11,354 - INFO - context_portal_mcp.db.database - Running Alembic migrations for database: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\context.db
+2025-08-22 08:59:08,149 - INFO - context_portal_mcp.main - File logging configured to: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\./logs/conport.log
+2025-08-22 08:59:08,161 - INFO - context_portal_mcp.main - Parsed CLI args: Namespace(host='127.0.0.1', port=8000, workspace_id='D:\\Gawean Rebinmas\\Driver_Epson_L120', mode='stdio', log_file='./logs/conport.log', log_level='INFO')
+2025-08-22 08:59:08,161 - INFO - context_portal_mcp.main - Starting ConPort in STDIO mode using FastMCP for initial CLI arg workspace_id: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-22 08:59:08,161 - INFO - context_portal_mcp.main - Pre-warming database connection for workspace: D:\Gawean Rebinmas\Driver_Epson_L120
+2025-08-22 08:59:08,161 - INFO - context_portal_mcp.db.database - Alembic: Script directory D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\alembic confirmed to exist by Python.
+2025-08-22 08:59:08,170 - INFO - context_portal_mcp.db.database - Running Alembic migrations for database: D:\Gawean Rebinmas\Driver_Epson_L120\context_portal\context.db

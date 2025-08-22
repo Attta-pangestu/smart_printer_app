@@ -1,0 +1,41 @@
+{
+  "pdf_file": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+  "printer": "EPSON L120 Series",
+  "sumatra_path": "D:\\Gawean Rebinmas\\Driver_Epson_L120\\print_tools\\SumatraPDF-3.4.6-64.exe",
+  "test_timestamp": "2025-08-22T11:37:57.040226",
+  "test_purpose": "Pengujian terpisah Auto Rotation dan Full Page methods",
+  "results": [
+    {
+      "method": "AUTO ROTATION METHOD",
+      "description": "Auto rotation untuk penggunaan kertas maksimal tanpa terpotong",
+      "command": "\"D:\\Gawean Rebinmas\\Driver_Epson_L120\\print_tools\\SumatraPDF-3.4.6-64.exe\" -print-to \"EPSON L120 Series\" -print-settings \"fit\" -silent \"d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf\"",
+      "success": true,
+      "timestamp": "2025-08-22T11:36:17.370929",
+      "return_code": 0,
+      "stdout": "Starting SumatraPDF, GetCommandLineW():\n\"D:\\Gawean Rebinmas\\Driver_Epson_L120\\print_tools\\SumatraPDF-3.4.6-64.exe\"  -print-to \"EPSON L120 Series\" -print-settings \"fit\" -silent \"d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf\"\nprefs::Load() took 0.13 ms\nParseTranslationsTxt: 19181 lines, nStrings: 357\nPrintFile: file: 'd:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf', printer: 'EPSON L120 Series'\n~EngineMupdf: 0x000001C1E2134B30\n~EngineMupdf: 0x000001C1E028A790\n",
+      "stderr": "",
+      "user_feedback": {
+        "question_1": true,
+        "question_2": true,
+        "question_3": false,
+        "question_4": true
+      }
+    },
+    {
+      "method": "FULL PAGE METHOD",
+      "description": "Full page dengan stretch untuk mengisi seluruh kertas (akan terpotong)",
+      "command": "\"D:\\Gawean Rebinmas\\Driver_Epson_L120\\print_tools\\SumatraPDF-3.4.6-64.exe\" -print-to \"EPSON L120 Series\" -print-settings \"137%\" -silent \"d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf\"",
+      "success": true,
+      "timestamp": "2025-08-22T11:37:22.327989",
+      "return_code": 0,
+      "stdout": "Starting SumatraPDF, GetCommandLineW():\n\"D:\\Gawean Rebinmas\\Driver_Epson_L120\\print_tools\\SumatraPDF-3.4.6-64.exe\"  -print-to \"EPSON L120 Series\" -print-settings \"137%\" -silent \"d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf\"\nprefs::Load() took 0.13 ms\nParseTranslationsTxt: 19181 lines, nStrings: 357\nPrintFile: file: 'd:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf', printer: 'EPSON L120 Series'\n~EngineMupdf: 0x000001CD8B87F0B0\n~EngineMupdf: 0x000001CD8B36BDE0\n",
+      "stderr": "",
+      "user_feedback": {
+        "question_1": true,
+        "question_2": true,
+        "question_3": false,
+        "question_4": true
+      }
+    }
+  ]
+}

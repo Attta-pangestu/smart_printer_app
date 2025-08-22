@@ -1,0 +1,50 @@
+{
+  "pdf_info": {
+    "file": "Test_print.pdf",
+    "dimensions_mm": [
+      297.0,
+      210.0
+    ],
+    "orientation": "landscape"
+  },
+  "printer_info": {
+    "paper_size": "A4",
+    "dimensions_mm": [
+      210.0,
+      297.0
+    ],
+    "orientation": "portrait"
+  },
+  "methods": {
+    "method_1_safe": {
+      "name": "Fit to Page + Center",
+      "scale_percent": 63.9,
+      "paper_usage_percent": 40.9,
+      "recommended_for": "Dokumen penting, kualitas terjamin"
+    },
+    "method_2_moderate": {
+      "name": "Custom Scaling",
+      "scale_percent": 67.3,
+      "paper_usage_percent": 45.3,
+      "recommended_for": "Sedikit lebih besar dari method 1"
+    },
+    "method_3_optimal": {
+      "name": "Auto Rotation",
+      "scale_percent": 90.5,
+      "paper_usage_percent": 81.9,
+      "recommended_for": "Penggunaan kertas maksimal tanpa terpotong"
+    },
+    "method_4_risky": {
+      "name": "Stretch to Fill",
+      "scale_percent": 136.6,
+      "paper_usage_percent": 100.0,
+      "content_visible_percent": 70.3,
+      "recommended_for": "Full page dengan risiko terpotong"
+    }
+  },
+  "commands": {
+    "analysis": "python full_page_print_methods.py",
+    "practical_test": "python practical_print_test.py",
+    "this_guide": "python full_page_print_guide.py"
+  }
+}

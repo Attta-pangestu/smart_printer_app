@@ -1,0 +1,32 @@
+1. Kemampuan untuk melakukan:
+
+- Print dokumen
+
+- Preview PDF
+
+- Pengaturan layout print
+
+- Konfigurasi pengaturan print lainnya
+
+2. Fitur yang diharapkan:
+
+- Mampu mencetak berbagai jenis dokumen melalui web
+
+- Contoh implementasi untuk spreadsheet (misal Excel) dengan:
+
+* Preview dokumen
+
+* Konversi ke PDF sementara
+
+* Kemampuan print
+
+- Dukungan untuk format dokumen lain (docx, dll) dengan:
+
+* Preview untuk setiap dokumen yang diupload
+
+* Kemampuan print setelah preview
+
+Pastikan aplikasi memiliki antarmuka yang profesional dan fungsionalitas yang lengkap untuk kebutuhan printing dokumen.
+
+Setiap dokumen yang diupload harus menampilkan preview sebelum proses unggah selesai. Selain itu, pastikan tersedia pengaturan untuk memilih ukuran kertas (A4, Letter, dll) dan orientasi (portrait/landscape) yang muncul saat melakukan print baik melalui browser Chrome maupun PDF reader.
+Saya sudah mengunggah dokumen tersebut, tetapi tidak dapat menemukan bagian untuk melihat pratinjau dokumen. Tolong perbaiki masalah ini, karena perubahan yang kamu lakukan sebelumnya tidak terimplementasi dengan benar.

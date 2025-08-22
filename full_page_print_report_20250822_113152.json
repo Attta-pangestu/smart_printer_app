@@ -1,0 +1,168 @@
+{
+  "timestamp": "20250822_113152",
+  "pdf_file": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+  "pdf_info": {
+    "pages": 1,
+    "width_mm": 297.1801872,
+    "height_mm": 210.05813232,
+    "width_points": 842.4,
+    "height_points": 595.44,
+    "orientation": "landscape"
+  },
+  "methods": {
+    "method_1": {
+      "method_name": "Fit to Page + Center",
+      "fit_to_page": "fit_to_page",
+      "center_horizontally": true,
+      "center_vertically": true,
+      "margin_top": 0.39,
+      "margin_bottom": 0.39,
+      "margin_left": 0.39,
+      "margin_right": 0.39,
+      "custom_scale": 100,
+      "description": "Menyesuaikan dokumen ke ukuran kertas dengan pemusatan otomatis",
+      "calculated_scale": "0.639 (63.9%)",
+      "final_size": "190.0 x 134.3 mm",
+      "position": "x=10.0mm, y=81.4mm",
+      "paper_usage": "40.9%"
+    },
+    "method_2": {
+      "method_name": "Custom Scaling Maksimal",
+      "fit_to_page": "custom",
+      "center_horizontally": true,
+      "center_vertically": true,
+      "margin_top": 0.197,
+      "margin_bottom": 0.197,
+      "margin_left": 0.197,
+      "margin_right": 0.197,
+      "custom_scale": 67,
+      "description": "Scaling maksimal dengan margin minimal untuk ukuran terbesar",
+      "calculated_scale": "0.673 (67.3%)",
+      "final_size": "200.0 x 141.4 mm",
+      "position": "x=5.0mm, y=77.8mm",
+      "paper_usage": "45.3%"
+    },
+    "method_3": {
+      "method_name": "Auto Rotation",
+      "fit_to_page": "fit_to_page",
+      "center_horizontally": true,
+      "center_vertically": true,
+      "margin_top": 0.39,
+      "margin_bottom": 0.39,
+      "margin_left": 0.39,
+      "margin_right": 0.39,
+      "custom_scale": 100,
+      "paper_orientation": "landscape",
+      "description": "Rotasi otomatis ke landscape untuk scale optimal",
+      "calculated_scale": "0.905 (90.5%)",
+      "final_size": "268.8 x 190.0 mm",
+      "position": "x=14.1mm, y=10.0mm",
+      "paper_usage": "81.9%",
+      "recommended_paper": "297x210mm landscape"
+    },
+    "method_4": {
+      "method_name": "Stretch to Fill",
+      "fit_to_page": "fill",
+      "center_horizontally": true,
+      "center_vertically": true,
+      "margin_top": 0.197,
+      "margin_bottom": 0.197,
+      "margin_left": 0.197,
+      "margin_right": 0.197,
+      "custom_scale": 136,
+      "description": "Mengisi seluruh area cetak, mungkin memotong sebagian konten",
+      "calculated_scale": "1.366 (136.6%)",
+      "final_size": "406.0 x 287.0 mm",
+      "position": "x=-98.0mm, y=5.0mm",
+      "paper_usage": "100.0%",
+      "overflow": "x=206.0mm, y=0.0mm",
+      "content_visible": "70.3%"
+    }
+  },
+  "test_configs": {
+    "method_1": {
+      "pdf_path": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+      "printer_name": "EPSON L120 Series",
+      "settings": {
+        "fit_to_page": "fit_to_page",
+        "center_horizontally": true,
+        "center_vertically": true,
+        "margin_top": 0.39,
+        "margin_bottom": 0.39,
+        "margin_left": 0.39,
+        "margin_right": 0.39,
+        "custom_scale": 100
+      },
+      "expected_result": {
+        "scale": "0.639 (63.9%)",
+        "final_size": "190.0 x 134.3 mm",
+        "paper_usage": "40.9%"
+      }
+    },
+    "method_2": {
+      "pdf_path": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+      "printer_name": "EPSON L120 Series",
+      "settings": {
+        "fit_to_page": "custom",
+        "center_horizontally": true,
+        "center_vertically": true,
+        "margin_top": 0.197,
+        "margin_bottom": 0.197,
+        "margin_left": 0.197,
+        "margin_right": 0.197,
+        "custom_scale": 67
+      },
+      "expected_result": {
+        "scale": "0.673 (67.3%)",
+        "final_size": "200.0 x 141.4 mm",
+        "paper_usage": "45.3%"
+      }
+    },
+    "method_3": {
+      "pdf_path": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+      "printer_name": "EPSON L120 Series",
+      "settings": {
+        "fit_to_page": "fit_to_page",
+        "center_horizontally": true,
+        "center_vertically": true,
+        "margin_top": 0.39,
+        "margin_bottom": 0.39,
+        "margin_left": 0.39,
+        "margin_right": 0.39,
+        "custom_scale": 100
+      },
+      "expected_result": {
+        "scale": "0.905 (90.5%)",
+        "final_size": "268.8 x 190.0 mm",
+        "paper_usage": "81.9%"
+      }
+    },
+    "method_4": {
+      "pdf_path": "d:\\Gawean Rebinmas\\Driver_Epson_L120\\test_files\\Test_print.pdf",
+      "printer_name": "EPSON L120 Series",
+      "settings": {
+        "fit_to_page": "fill",
+        "center_horizontally": true,
+        "center_vertically": true,
+        "margin_top": 0.197,
+        "margin_bottom": 0.197,
+        "margin_left": 0.197,
+        "margin_right": 0.197,
+        "custom_scale": 136
+      },
+      "expected_result": {
+        "scale": "1.366 (136.6%)",
+        "final_size": "406.0 x 287.0 mm",
+        "paper_usage": "100.0%"
+      }
+    }
+  },
+  "summary": {
+    "best_method": "method_4",
+    "best_paper_usage": 100.0,
+    "recommendations": [
+      "Dokumen landscape: Pertimbangkan Method 3 (Auto Rotation) untuk hasil optimal",
+      "Method 1 (Fit to Page) paling aman untuk mempertahankan proporsi dokumen"
+    ]
+  }
+}

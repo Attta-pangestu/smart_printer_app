@@ -57,11 +57,18 @@ class DuplexMode(str, Enum):
 
 class FitToPageMode(str, Enum):
     """Mode fit to page"""
-    NONE = "none"
-    FIT_TO_PAGE = "fit_to_page"
-    FIT_TO_PAPER = "fit_to_paper"
-    SHRINK_TO_FIT = "shrink_to_fit"
     ACTUAL_SIZE = "actual_size"
+    FIT_TO_PAGE = "fit_to_page"
+    FILL_PAGE = "fill"
+    SHRINK_TO_FIT = "shrink_to_fit"
+    CUSTOM = "custom"
+
+
+class PrintMethod(str, Enum):
+    """Metode pencetakan full page"""
+    AUTO_ROTATION = "auto_rotation"
+    FULL_PAGE = "full_page"
+    FIT_TO_PAGE = "fit_to_page"
 
 
 class PrintSettings(BaseModel):
@@ -73,6 +80,9 @@ class PrintSettings(BaseModel):
     quality: PrintQuality = PrintQuality.NORMAL
     duplex: DuplexMode = DuplexMode.NONE
     
+    # Print method for full page printing
+    print_method: PrintMethod = PrintMethod.AUTO_ROTATION
+    
     # Advanced settings
     scale: int = Field(100, ge=25, le=400, description="Scale percentage")
     margins: Dict[str, float] = Field(
@@ -82,11 +92,12 @@ class PrintSettings(BaseModel):
     reverse_order: bool = False
     
     # Page range
+    page_range_type: str = Field("all", description="Type of page range: all, current, custom, odd, even")
     page_range: Optional[str] = Field(None, description="e.g., '1-5,8,11-13'")
     pages_per_sheet: int = Field(1, ge=1, le=16, description="Pages per sheet")
     
     # Fit to page settings
-    fit_to_page: FitToPageMode = FitToPageMode.NONE
+    fit_to_page: FitToPageMode = FitToPageMode.ACTUAL_SIZE
     
     # Split PDF settings
     split_pdf: bool = Field(False, description="Split PDF into separate print jobs per page")
@@ -110,7 +121,7 @@ class PrintSettings(BaseModel):
         description="Header and footer settings"
     )
     
-    # Page break settings
+    # Page break control settings
     page_breaks: Optional[Dict[str, Any]] = Field(
         default_factory=lambda: {
             "avoid_page_breaks": False,
@@ -119,6 +130,10 @@ class PrintSettings(BaseModel):
         },
         description="Page break control settings"
     )
+    
+    # Positioning settings
+    center_horizontally: bool = Field(False, description="Center content horizontally on page")
+    center_vertically: bool = Field(False, description="Center content vertically on page")
     
     class Config:
         use_enum_values = True

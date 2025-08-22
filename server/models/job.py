@@ -55,6 +55,15 @@ class DuplexMode(str, Enum):
     VERTICAL = "vertical"
 
 
+class FitToPageMode(str, Enum):
+    """Mode fit to page"""
+    NONE = "none"
+    FIT_TO_PAGE = "fit_to_page"
+    FIT_TO_PAPER = "fit_to_paper"
+    SHRINK_TO_FIT = "shrink_to_fit"
+    ACTUAL_SIZE = "actual_size"
+
+
 class PrintSettings(BaseModel):
     """Pengaturan printing"""
     color_mode: ColorMode = ColorMode.COLOR
@@ -75,6 +84,14 @@ class PrintSettings(BaseModel):
     # Page range
     page_range: Optional[str] = Field(None, description="e.g., '1-5,8,11-13'")
     pages_per_sheet: int = Field(1, ge=1, le=16, description="Pages per sheet")
+    
+    # Fit to page settings
+    fit_to_page: FitToPageMode = FitToPageMode.NONE
+    
+    # Split PDF settings
+    split_pdf: bool = Field(False, description="Split PDF into separate print jobs per page")
+    split_page_range: Optional[str] = Field(None, description="Page range for splitting, e.g., '1-5,8,11-13'")
+    split_output_prefix: str = Field("page_", description="Prefix for split page files")
     
     # Custom paper size (if paper_size is CUSTOM)
     custom_paper: Optional[Dict[str, float]] = Field(None, description="Custom paper size with width and height in inches")

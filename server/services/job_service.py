@@ -16,6 +16,7 @@ from models.job import PrintJob, JobStatus, PrintSettings
 from models.printer import Printer, PrinterStatus
 from services.printer_service import PrinterService
 from services.file_service import FileService
+# Import DocumentService locally to avoid circular import
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,81 @@ class JobService:
         
         # Log aktivitas detail
         logger.info(f"PRINT JOB SUBMITTED - ID: {job.id}, File: {file_info['name']}, Type: {file_info['type']}, Printer: {printer_id}, User: {user or 'anonymous'}, Copies: {settings.copies}, Settings: {settings}")
+        return job
+    
+    def submit_job_with_processing(self, 
+                                   printer_id: str, 
+                                   file_path: str, 
+                                   settings: PrintSettings,
+                                   document_settings: Dict[str, Any] = None,
+                                   title: str = None,
+                                   user: str = "anonymous",
+                                   client_ip: str = None) -> PrintJob:
+        """Submit print job dengan document processing"""
+        
+        logger.info(f"JobService: Submitting job with document processing for printer_id: '{printer_id}'")
+        
+        # Validasi printer
+        printer = self.printer_service.get_printer(printer_id)
+        if not printer:
+            logger.error(f"JobService: Printer '{printer_id}' not found")
+            raise ValueError(f"Printer {printer_id} not found")
+        
+        # Validasi file
+        if not os.path.exists(file_path):
+            raise ValueError(f"File {file_path} not found")
+        
+        file_info = self.file_service.get_file_info(file_path)
+        
+        # Process document jika ada document_settings
+        processed_file_path = file_path
+        if document_settings:
+            try:
+                # Import DocumentService locally to avoid circular import
+                from services.document_service import DocumentService
+                document_service = DocumentService()
+                
+                logger.info(f"Processing document with settings: {document_settings}")
+                processed_file_info = document_service.process_document(file_path, document_settings)
+                processed_file_path = processed_file_info['path']
+                logger.info(f"Document processed successfully: {processed_file_path}")
+            except Exception as e:
+                logger.error(f"Document processing failed: {e}")
+                # Fallback ke file asli jika processing gagal
+                processed_file_path = file_path
+        
+        # Update file info untuk processed file
+        if processed_file_path != file_path:
+            file_info = self.file_service.get_file_info(processed_file_path)
+        
+        # Buat job baru dengan processed file
+        job = PrintJob(
+            printer_id=printer_id,
+            file_name=file_info['name'],
+            file_path=processed_file_path,
+            file_size=file_info['size'],
+            file_type=file_info['type'],
+            title=title or file_info['name'],
+            user=user,
+            client_ip=client_ip,
+            settings=settings,
+            total_pages=file_info.get('pages', 0),
+            metadata={
+                'original_file_path': file_path,
+                'document_settings': document_settings or {},
+                'processed_file_path': processed_file_path
+            }
+        )
+        
+        # Simpan job
+        self._jobs[job.id] = job
+        self._total_jobs += 1
+        
+        # Masukkan ke queue
+        self._job_queue.put(job.id)
+        
+        # Log aktivitas detail
+        logger.info(f"PRINT JOB WITH PROCESSING SUBMITTED - ID: {job.id}, Original: {file_path}, Processed: {processed_file_path}, Type: {file_info['type']}, Printer: {printer_id}, User: {user or 'anonymous'}, Copies: {settings.copies}")
         return job
     
     def get_job(self, job_id: str) -> Optional[PrintJob]:
@@ -530,7 +606,9 @@ printer berfungsi dengan baik.
             logger.error(f"PRINT JOB FAILED - ID: {job.id}, Error: {e}, Duration: {duration:.2f}s")
         finally:
             # Cleanup: hapus file temporary setelah proses cetak selesai
-            self._cleanup_temp_file(job)
+            # TEMPORARY DISABLED: Keep files for debugging
+            # self._cleanup_temp_file(job)
+            logger.info(f"Keeping temporary file {job.file_path} for debugging")
     
     def _print_file(self, job: PrintJob, printer: Printer) -> bool:
         """Print file ke printer"""
@@ -554,50 +632,60 @@ printer berfungsi dengan baik.
             return False
     
     def _print_pdf(self, job: PrintJob, printer: Printer) -> bool:
-        """Print PDF file using enhanced PDF print solution"""
+        """Print PDF file using silent print service (no dialogs)"""
         try:
             import sys
             import os
             
-            # Add server directory to path for importing pdf_print_solution
+            # Add server directory to path for importing silent_print_service
             server_dir = os.path.dirname(os.path.dirname(__file__))
             if server_dir not in sys.path:
                 sys.path.insert(0, server_dir)
             
-            from pdf_print_solution import PDFPrintSolution
+            from silent_print_service import SilentPrintService
             
-            logger.info(f"Starting enhanced PDF print to {printer.name}")
+            logger.info(f"Starting silent PDF print to {printer.name}")
             
-            # Initialize PDF print solution
-            solution = PDFPrintSolution()
-            solution.printer_name = printer.name
+            # Initialize silent print service
+            service = SilentPrintService()
+            service.printer_name = printer.name
             
-            # Print PDF using enhanced solution
-            success, message = solution.print_pdf(job.file_path)
+            # Print PDF using silent service with print settings
+            success, message = service.print_pdf_silent(job.file_path, job.settings)
             
             if success:
-                logger.info(f"PDF printed successfully: {message}")
+                logger.info(f"PDF printed silently: {message}")
                 job.status = JobStatus.COMPLETED
                 job.pages_printed = 1  # Assume 1 page for now
                 job.completed_at = datetime.now()
+                
+                # Cleanup service
+                service.cleanup()
                 return True
             else:
-                logger.error(f"PDF printing failed: {message}")
+                logger.error(f"Silent PDF printing failed: {message}")
                 job.status = JobStatus.FAILED
                 job.error_message = message
+                
+                # Cleanup service
+                service.cleanup()
                 return False
                 
         except ImportError as e:
-            logger.error(f"Failed to import PDF print solution: {e}")
+            logger.error(f"Failed to import silent print service: {e}")
             # Fallback to original method if import fails
             return self._print_pdf_fallback(job, printer)
         except Exception as e:
-            logger.error(f"Enhanced PDF printing failed: {e}")
+            logger.error(f"Silent PDF printing failed: {e}")
             # Fallback to original method
             return self._print_pdf_fallback(job, printer)
     
     def _print_pdf_fallback(self, job: PrintJob, printer: Printer) -> bool:
         """Fallback PDF printing method using Windows API"""
+        printer_handle = None
+        original_devmode = None
+        original_printer = None
+        
         try:
             import subprocess
             import time
@@ -607,6 +695,67 @@ printer berfungsi dengan baik.
             import os
             
             logger.info(f"Using fallback PDF printing method for {printer.name}")
+            
+            # Get initial printer job count
+            temp_handle = win32print.OpenPrinter(printer.name)
+            initial_status = win32print.GetPrinter(temp_handle, 2)
+            initial_jobs_count = initial_status.get('cJobs', 0)
+            win32print.ClosePrinter(temp_handle)
+            
+            # Apply print settings if available
+            try:
+                if job.settings:
+                    printer_handle = win32print.OpenPrinter(printer.name)
+                    
+                    # Get current printer settings
+                    printer_info = win32print.GetPrinter(printer_handle, 2)
+                    
+                    # Get and modify device mode
+                    try:
+                        pDevMode = win32print.GetPrinter(printer_handle, 8)
+                        if pDevMode and hasattr(pDevMode, 'DevMode'):
+                            devmode = pDevMode['pDevMode']
+                        else:
+                            devmode = win32print.DocumentProperties(0, printer_handle, printer.name, None, None, 0)
+                    except:
+                        devmode = win32print.DocumentProperties(0, printer_handle, printer.name, None, None, 0)
+                    
+                    if devmode:
+                        # Store original settings
+                        original_devmode = {
+                            'Color': getattr(devmode, 'Color', 1),
+                            'Orientation': getattr(devmode, 'Orientation', 1),
+                            'Copies': getattr(devmode, 'Copies', 1)
+                        }
+                        
+                        # Apply color mode
+                        if hasattr(job.settings, 'color_mode'):
+                            from models.job import ColorMode
+                            if job.settings.color_mode == ColorMode.COLOR:
+                                devmode.Color = 2  # Color
+                            elif job.settings.color_mode in [ColorMode.GRAYSCALE, ColorMode.BLACK_WHITE]:
+                                devmode.Color = 1  # Monochrome
+                        
+                        # Apply orientation
+                        if hasattr(job.settings, 'orientation'):
+                            from models.job import Orientation
+                            if job.settings.orientation == Orientation.PORTRAIT:
+                                devmode.Orientation = 1
+                            elif job.settings.orientation == Orientation.LANDSCAPE:
+                                devmode.Orientation = 2
+                        
+                        # Apply copies
+                        if hasattr(job.settings, 'copies'):
+                            devmode.Copies = max(1, min(999, job.settings.copies))
+                        
+                        # Set the modified device mode
+                        win32print.DocumentProperties(0, printer_handle, printer.name, devmode, devmode, win32con.DM_IN_BUFFER | win32con.DM_OUT_BUFFER)
+                        printer_info['pDevMode'] = devmode
+                        win32print.SetPrinter(printer_handle, 2, printer_info, 0)
+                        
+                        logger.info(f"Applied print settings - Color: {devmode.Color}, Orientation: {devmode.Orientation}, Copies: {devmode.Copies}")
+            except Exception as e:
+                logger.warning(f"Could not apply print settings: {e}")
             
             # Try Windows API ShellExecute with specific printer
             try:
@@ -625,17 +774,11 @@ printer berfungsi dengan baik.
                     0
                 )
                 
-                # Restore original default printer
-                if original_printer:
-                    win32print.SetDefaultPrinter(original_printer)
-                    logger.info(f"Restored default printer to: {original_printer}")
-                
                 if result <= 32:  # ShellExecute error codes
                     logger.error(f"ShellExecute failed with code: {result}")
                     return False
                 
                 logger.info("Fallback Windows API print command executed successfully")
-                return True
                 
             except Exception as e:
                 logger.error(f"Fallback Windows API printing failed: {e}")
@@ -723,6 +866,43 @@ printer berfungsi dengan baik.
         except Exception as e:
             logger.error(f"Error printing PDF: {e}")
             return False
+        finally:
+            # Restore original printer settings
+            try:
+                if printer_handle and original_devmode:
+                    # Get current printer info
+                    printer_info = win32print.GetPrinter(printer_handle, 2)
+                    
+                    # Get device mode and restore original settings
+                    devmode = win32print.DocumentProperties(0, printer_handle, printer.name, None, None, 0)
+                    if devmode:
+                        devmode.Color = original_devmode['Color']
+                        devmode.Orientation = original_devmode['Orientation']
+                        devmode.Copies = original_devmode['Copies']
+                        
+                        # Apply restored settings
+                        win32print.DocumentProperties(0, printer_handle, printer.name, devmode, devmode, win32con.DM_IN_BUFFER | win32con.DM_OUT_BUFFER)
+                        printer_info['pDevMode'] = devmode
+                        win32print.SetPrinter(printer_handle, 2, printer_info, 0)
+                        
+                        logger.info(f"Restored original printer settings - Color: {devmode.Color}, Orientation: {devmode.Orientation}, Copies: {devmode.Copies}")
+            except Exception as e:
+                logger.warning(f"Could not restore original printer settings: {e}")
+            
+            # Close printer handle
+            try:
+                if printer_handle:
+                    win32print.ClosePrinter(printer_handle)
+            except Exception as e:
+                logger.warning(f"Could not close printer handle: {e}")
+            
+            # Restore original default printer
+            try:
+                if original_printer:
+                    win32print.SetDefaultPrinter(original_printer)
+                    logger.info(f"Restored default printer to: {original_printer}")
+            except Exception as e:
+                logger.warning(f"Could not restore original default printer: {e}")
     
     def _print_text(self, job: PrintJob, printer: Printer) -> bool:
         """Print text file"""

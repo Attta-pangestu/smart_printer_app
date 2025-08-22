@@ -14,13 +14,16 @@ from typing import List, Optional, Dict, Any
 from pathlib import Path
 from docx2pdf import convert
 
-from services import PrinterService, JobService, DiscoveryService, FileService
+from services import PrinterService, JobService, DiscoveryService, FileService, DocumentService
+from services.enhanced_document_service import EnhancedDocumentService
+from api.document_manipulation import router as document_router
 from models.printer import Printer, PrinterInfo, PrinterDiscovery
 from models.job import PrintJob, PrintSettings, JobStatus
 from models.response import (
     APIResponse, PaginatedResponse, StatusResponse,
     PrinterStatusResponse, FileUploadResponse, JobSubmissionResponse
 )
+from models.request_models import DocumentProcessingRequest, PrintJobRequest
 
 # Configure logging
 logging.basicConfig(
@@ -77,7 +80,7 @@ class PrintServerApp:
         """Create FastAPI application instance"""
         return FastAPI(
             title="Epson L120 Print Server",
-            description="Professional print server for Epson L120 printer management",
+            description="Rebinmas Remote Print Server for Epson L120 printer management",
             version="2.0.0",
             docs_url="/docs" if self.config['server']['debug'] else None,
             redoc_url="/redoc" if self.config['server']['debug'] else None
@@ -120,6 +123,8 @@ class PrintServerApp:
             upload_dir=self.config['storage']['temp_dir'],
             temp_dir=self.config['storage']['temp_dir']
         )
+        self.document_service = DocumentService()
+        self.enhanced_document_service = EnhancedDocumentService()
         self.job_service = JobService(self.printer_service, self.file_service)
         self.discovery_service = DiscoveryService(
             port=self.config['server']['port']
@@ -214,6 +219,7 @@ config = server.config
 # Services (for backward compatibility)
 printer_service = server.printer_service
 file_service = server.file_service
+document_service = server.document_service
 job_service = server.job_service
 discovery_service = server.discovery_service
 security = server.security
@@ -356,6 +362,58 @@ def _setup_system_endpoints(server_instance):
         except Exception as e:
             logger.error(f"Preview error: {e}")
             raise HTTPException(status_code=500, detail="Internal server error during file preview")
+    
+    @server.app.post("/api/documents/process")
+    async def process_document(request_data: dict):
+        """Process document with layout settings"""
+        try:
+            file_id = request_data.get("file_id")
+            settings = request_data.get("settings", {})
+            
+            if not file_id:
+                raise HTTPException(status_code=400, detail="file_id is required")
+            
+            # Validate file exists
+            file_path = server.file_service.upload_dir / file_id
+            if not file_path.exists():
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            # Process document
+            processed_file_info = server.document_service.process_document(
+                str(file_path), settings
+            )
+            
+            return {
+                "success": True,
+                "processed_file": processed_file_info,
+                "original_file": file_id,
+                "settings_applied": settings
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Document processing error: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error during document processing")
+    
+    @server.app.get("/api/documents/{file_id}/preview")
+    async def get_processed_document_preview(file_id: str):
+        """Get preview of processed document"""
+        try:
+            # Check if file exists in processed directory
+            processed_path = server.document_service.output_dir / file_id
+            if not processed_path.exists():
+                raise HTTPException(status_code=404, detail="Processed file not found")
+            
+            return FileResponse(
+                path=str(processed_path),
+                media_type='application/pdf',
+                headers={"Content-Disposition": f"inline; filename={file_id}"}
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Processed document preview error: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error during processed document preview")
     
     @server.app.get("/api/files/serve/{file_path:path}")
     async def serve_uploaded_file(file_path: str):
@@ -538,7 +596,12 @@ def _setup_system_endpoints(server_instance):
                     "avoid_page_breaks": False,
                     "insert_manual_breaks": False,
                     "break_positions": ""
-                })
+                }),
+                # New advanced features
+                fit_to_page=settings.get("fit_to_page", "actual_size"),
+                split_pdf=settings.get("split_pdf", False),
+                split_page_range=settings.get("split_page_range", ""),
+                split_output_prefix=settings.get("split_output_prefix", "page")
             )
             
             job = server.job_service.submit_job(printer_id, file_path, print_settings)
@@ -621,7 +684,12 @@ def _setup_system_endpoints(server_instance):
                 collate=True,
                 reverse_order=False,
                 margins={"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0},
-                custom_paper=None
+                custom_paper=None,
+                # New advanced features with default values
+                fit_to_page="actual_size",
+                split_pdf=False,
+                split_page_range="",
+                split_output_prefix="page"
             )
             
             # Submit print job
@@ -643,6 +711,67 @@ def _setup_system_endpoints(server_instance):
             return {"job_id": job.id, "status": job.status, "message": "Test page job submitted successfully"}
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    
+    @server.app.post("/api/print/with-processing")
+    async def print_document_with_processing(request: DocumentProcessingRequest):
+        """Print document dengan document processing"""
+        try:
+            file_id = request.file_id
+            printer_id = request.printer_id
+            print_settings_data = request.print_settings
+            document_settings = request.document_settings
+            user = request.user
+            
+            if not file_id or not printer_id:
+                raise HTTPException(status_code=400, detail="file_id and printer_id are required")
+            
+            # Validate file exists
+            file_path = server.file_service.upload_dir / file_id
+            if not file_path.exists():
+                raise HTTPException(status_code=404, detail="File not found")
+            
+            # Create PrintSettings object
+            print_settings = PrintSettings(
+                copies=print_settings_data.get("copies", 1),
+                color_mode=print_settings_data.get("color_mode", "color"),
+                paper_size=print_settings_data.get("paper_size", "A4"),
+                orientation=print_settings_data.get("orientation", "portrait"),
+                quality=print_settings_data.get("quality", "normal"),
+                duplex=print_settings_data.get("duplex", "none"),
+                scale=print_settings_data.get("scale", 100),
+                pages_per_sheet=print_settings_data.get("pages_per_sheet", 1),
+                page_range=print_settings_data.get("page_range", ""),
+                collate=print_settings_data.get("collate", True),
+                reverse_order=print_settings_data.get("reverse_order", False),
+                margins=print_settings_data.get("margins", {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}),
+                custom_paper=print_settings_data.get("custom_paper"),
+                # New advanced features
+                fit_to_page=print_settings_data.get("fit_to_page", "actual_size"),
+                split_pdf=print_settings_data.get("split_pdf", False),
+                split_page_range=print_settings_data.get("split_page_range", ""),
+                split_output_prefix=print_settings_data.get("split_output_prefix", "page")
+            )
+            
+            # Submit print job dengan document processing
+            job = server.job_service.submit_job_with_processing(
+                printer_id=printer_id,
+                file_path=str(file_path),
+                settings=print_settings,
+                document_settings=document_settings,
+                user=user
+            )
+            
+            return {
+                "job_id": job.id,
+                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+                "message": "Print job with document processing submitted successfully",
+                "document_settings_applied": document_settings
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Print with processing error: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error during print with processing")
     
     @server.app.get("/api/config/printers")
     async def get_printer_config():
@@ -810,6 +939,13 @@ def _setup_system_endpoints(server_instance):
     async def health_check():
         """Health check endpoint"""
         return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    
+    # Include document manipulation router
+    server.app.include_router(document_router, prefix="/api/documents", tags=["documents"])
+    
+    # Set the enhanced document service for the router
+    from api.document_manipulation import set_enhanced_document_service
+    set_enhanced_document_service(server.enhanced_document_service)
 
 # Main execution
 if __name__ == "__main__":

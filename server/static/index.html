@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Print Server Dashboard</title>
+    <title>Rebinmas Remote Print Server Dashboard</title>
     
     <!-- PDF.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -923,7 +923,7 @@
 <body>
     <div class="container">
         <div class="main-panel">
-            <h1>🖨️ Professional Print Server</h1>
+            <h1>🖨️ Rebinmas Remote Print Server</h1>
             
             <div id="alerts"></div>
             
@@ -1253,6 +1253,9 @@
                 
                 <div class="print-actions">
                     <button class="btn btn-secondary" onclick="resetSettings()">↻ Reset</button>
+                    <button class="btn btn-info" onclick="applyPreviewSettings()" id="applyBtn">
+                        ✨ Terapkan Perubahan
+                    </button>
                     <button class="btn btn-primary" onclick="submitPrintJob()" id="printBtn" disabled>
                         🖨️ Mulai Cetak
                     </button>
@@ -1785,7 +1788,7 @@
         function setupPreviewUpdateListeners() {
             const settingsToWatch = [
                 'orientation', 'marginTop', 'marginBottom', 
-                'marginLeft', 'marginRight'
+                'marginLeft', 'marginRight', 'colorMode', 'scale'
             ];
             
             settingsToWatch.forEach(settingId => {
@@ -1797,8 +1800,8 @@
                         }
                     });
                     
-                    // For number inputs, also listen to input events
-                    if (element.type === 'number') {
+                    // For number inputs and range inputs, also listen to input events
+                    if (element.type === 'number' || element.type === 'range') {
                         element.addEventListener('input', () => {
                             if (window.currentPDF && currentPage) {
                                 renderPDFPage(window.currentPDF, currentPage);
@@ -2205,6 +2208,36 @@
             }
         }
         
+        function applyColorModeToCanvas(canvas, colorMode) {
+            const context = canvas.getContext('2d');
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                if (colorMode === 'grayscale') {
+                    // Convert to grayscale using luminance formula
+                    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                    data[i] = gray;     // Red
+                    data[i + 1] = gray; // Green
+                    data[i + 2] = gray; // Blue
+                } else if (colorMode === 'bw') {
+                    // Convert to black and white using threshold
+                    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                    const bw = gray > 128 ? 255 : 0;
+                    data[i] = bw;       // Red
+                    data[i + 1] = bw;   // Green
+                    data[i + 2] = bw;   // Blue
+                }
+                // Alpha channel (data[i + 3]) remains unchanged
+            }
+            
+            context.putImageData(imageData, 0, 0);
+        }
+        
         async function renderPDFPage(pdf, pageNum) {
             try {
                 const page = await pdf.getPage(pageNum);
@@ -2269,6 +2302,11 @@
                     console.error('PDF render error:', renderError);
                     throw new Error(`Failed to render PDF page: ${renderError.message}`);
                 }
+                
+                // Apply color mode effects if settings available
+                if (printSettings && printSettings.colorMode && printSettings.colorMode !== 'color') {
+                    applyColorModeToCanvas(canvas, printSettings.colorMode);
+                }
             
                 const previewContainer = document.getElementById('previewContainer');
                 previewContainer.innerHTML = '';
@@ -2323,6 +2361,7 @@
                 return {
                     orientation: document.getElementById('orientation')?.value || 'portrait',
                     scale: parseInt(document.getElementById('scale')?.value) || 100,
+                    colorMode: document.getElementById('colorMode')?.value || 'color',
                     margins: {
                         top: parseFloat(document.getElementById('marginTop')?.value) || 0.5,
                         bottom: parseFloat(document.getElementById('marginBottom')?.value) || 0.5,
@@ -2547,6 +2586,21 @@
                     await renderPDFPage(window.currentPDF, currentPage);
                 }
                 updateZoomDisplay();
+            }
+        }
+        
+        // Apply preview settings manually
+        function applyPreviewSettings() {
+            try {
+                if (currentPDF && currentPageNum) {
+                    renderPDFPage(currentPDF, currentPageNum);
+                    showAlert('Pengaturan telah diterapkan ke preview', 'success');
+                } else {
+                    showAlert('Tidak ada PDF yang dimuat untuk diterapkan pengaturan', 'warning');
+                }
+            } catch (error) {
+                console.error('Error applying preview settings:', error);
+                showAlert('Gagal menerapkan pengaturan: ' + error.message, 'error');
             }
         }
 

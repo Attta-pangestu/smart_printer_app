@@ -34,9 +34,12 @@ class PrintDashboard {
         document.getElementById('printer-select').addEventListener('change', this.handlePrinterSelect.bind(this));
 
         // Print actions
-        document.getElementById('print-document').addEventListener('click', this.printDocument.bind(this));
+        document.getElementById('print-btn').addEventListener('click', this.printDocument.bind(this));
+        
+        // Update print button state initially
+        this.updatePrintButtonState();
         document.getElementById('clear-preview').addEventListener('click', this.clearPreview.bind(this));
-        document.getElementById('test-print').addEventListener('click', this.printTestPage.bind(this));
+        document.getElementById('test-print-btn').addEventListener('click', this.printTestPage.bind(this));
 
         // Job management
         document.getElementById('clear-queue').addEventListener('click', this.clearQueue.bind(this));
@@ -63,6 +66,50 @@ class PrintDashboard {
             this.processFile(files[0]);
         }
     }
+    
+    updatePrintButtonState() {
+        const printBtn = document.getElementById('print-btn');
+        if (printBtn) {
+            const hasFile = !!this.currentFile;
+            const hasPrinter = !!this.selectedPrinter;
+            const hasFileId = !!this.currentFileId;
+            const canPrint = hasFile && hasPrinter && hasFileId;
+            
+            printBtn.disabled = !canPrint;
+            
+            // Enhanced logging for debugging
+            console.log('Print button state updated:', {
+                currentFile: hasFile,
+                currentFileName: this.currentFile ? this.currentFile.name : 'none',
+                selectedPrinter: hasPrinter,
+                selectedPrinterValue: this.selectedPrinter || 'none',
+                currentFileId: hasFileId,
+                currentFileIdValue: this.currentFileId || 'none',
+                canPrint: canPrint,
+                buttonDisabled: printBtn.disabled,
+                buttonElement: !!printBtn
+            });
+            
+            // Visual feedback for button state
+            if (canPrint) {
+                printBtn.classList.remove('btn-secondary');
+                printBtn.classList.add('btn-primary');
+                printBtn.title = 'Ready to print';
+            } else {
+                printBtn.classList.remove('btn-primary');
+                printBtn.classList.add('btn-secondary');
+                
+                let missingItems = [];
+                if (!hasFile) missingItems.push('file');
+                if (!hasPrinter) missingItems.push('printer');
+                if (!hasFileId) missingItems.push('file upload');
+                
+                printBtn.title = `Missing: ${missingItems.join(', ')}`;
+            }
+        } else {
+            console.error('Print button element not found!');
+        }
+    }
 
     handleFileSelect(e) {
         const files = e.target.files;
@@ -85,6 +132,9 @@ class PrintDashboard {
             this.showPreviewSection();
             this.showPrintSettings();
             this.showMessage(`File uploaded successfully: ${file.name}`, 'success');
+            
+            // Update print button state after file is processed
+            this.updatePrintButtonState();
         } catch (error) {
             this.showMessage(`Error processing file: ${error.message}`, 'error');
             console.error('File processing error:', error);
@@ -197,12 +247,28 @@ class PrintDashboard {
             select.innerHTML = '<option value="">Select a printer...</option>';
             
             if (data.printers && data.printers.length > 0) {
+                let epsonL120Found = false;
+                
                 data.printers.forEach(printer => {
                     const option = document.createElement('option');
                     option.value = printer.id || printer.name;
                     option.textContent = printer.name;
                     select.appendChild(option);
+                    
+                    // Auto-select EPSON L120 if found
+                    if (printer.name && printer.name.toLowerCase().includes('epson l120')) {
+                        epsonL120Found = true;
+                        select.value = printer.id || printer.name;
+                        this.selectedPrinter = printer.id || printer.name;
+                    }
                 });
+                
+                // If EPSON L120 was found and selected, update status and button state
+                if (epsonL120Found) {
+                    console.log('EPSON L120 auto-selected:', this.selectedPrinter);
+                    this.updatePrinterStatus();
+                    this.updatePrintButtonState();
+                }
             } else {
                 select.innerHTML = '<option value="">No printers found</option>';
             }
@@ -214,10 +280,17 @@ class PrintDashboard {
 
     handlePrinterSelect(e) {
         this.selectedPrinter = e.target.value;
+        console.log('Printer selected:', this.selectedPrinter);
+        
         this.updatePrinterStatus();
         
-        const testPrintBtn = document.getElementById('test-print');
-        testPrintBtn.disabled = !this.selectedPrinter;
+        const testPrintBtn = document.getElementById('test-print-btn');
+        if (testPrintBtn) {
+            testPrintBtn.disabled = !this.selectedPrinter;
+        }
+        
+        // Update print button state
+        this.updatePrintButtonState();
     }
 
     async updatePrinterStatus() {
@@ -251,35 +324,63 @@ class PrintDashboard {
         }
 
         const settings = this.getPrintSettings();
+        const docProcessingSettings = this.getDocumentProcessingSettings();
+        
+        // Validate page range if specified
+        if (settings.page_range && settings.page_range !== 'odd' && settings.page_range !== 'even') {
+            const pageRangePattern = /^\d+(-\d+)?(,\s*\d+(-\d+)?)*$/;
+            if (!pageRangePattern.test(settings.page_range)) {
+                this.showMessage('Invalid page range format. Use format like: 1-5, 8, 10-12', 'error');
+                return;
+            }
+        }
+        
         const jobId = this.jobIdCounter++;
         
         const job = {
             id: jobId,
             name: this.currentFile.name,
+            fileName: this.currentFile.name, // Add fileName for job monitoring
             printer: this.selectedPrinter,
             status: 'pending',
             progress: 0,
             timestamp: new Date(),
-            settings: settings
+            settings: settings,
+            documentProcessing: docProcessingSettings
         };
 
         this.addJobToQueue(job);
         this.showLoadingOverlay('Sending print job...');
 
         try {
-            // Use the jobs/submit endpoint with uploaded file_id
+            // Use the print/with-processing endpoint with document processing
             const requestData = {
                 printer_id: this.selectedPrinter,
                 file_id: this.currentFileId,
-                settings: {
+                print_settings: {
                     copies: settings.copies,
-                    color_mode: settings.colorMode,
-                    paper_size: settings.paperSize,
-                    quality: settings.quality
+                    color_mode: settings.color_mode,
+                    paper_size: settings.paper_size,
+                    orientation: settings.orientation,
+                    quality: settings.quality,
+                    page_range: settings.page_range
+                },
+                document_settings: {
+                    // Include document manipulation settings
+                    format_conversion: docProcessingSettings.format_conversion,
+                    color_processing: docProcessingSettings.color_processing,
+                    brightness: docProcessingSettings.brightness,
+                    contrast: docProcessingSettings.contrast,
+                    pdf_split_type: docProcessingSettings.pdf_split_type,
+                    pdf_split_range: docProcessingSettings.pdf_split_range,
+                    page_range_type: settings.page_range_type,
+                    page_range: settings.page_range,
+                    orientation: settings.orientation,
+                    paper_size: settings.paper_size
                 }
             };
 
-            const response = await fetch('/api/jobs/submit', {
+            const response = await fetch('/api/print/with-processing', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -292,8 +393,8 @@ class PrintDashboard {
             if (response.ok) {
                 job.status = 'printing';
                 this.updateJobInQueue(job);
-                this.showMessage(`Print job started: ${this.currentFile.name}`, 'success');
-                this.simulateJobProgress(job);
+                this.showMessage(`Print job with document processing started: ${this.currentFile.name}`, 'success');
+                this.monitorJobProgress(job);
             } else {
                 job.status = 'error';
                 this.updateJobInQueue(job);
@@ -358,11 +459,63 @@ class PrintDashboard {
     }
 
     getPrintSettings() {
+        const pageRangeType = document.getElementById('page-range-type').value;
+        const pageRangeInput = document.getElementById('page-range').value;
+        const fitToPage = document.getElementById('fit-to-page').value;
+        const pdfSplit = document.getElementById('pdf-split').value;
+        const splitRange = document.getElementById('split-range').value;
+        
+        let pageRange = null;
+        if (pageRangeType === 'range' && pageRangeInput.trim()) {
+            pageRange = pageRangeInput.trim();
+        } else if (pageRangeType === 'odd') {
+            pageRange = 'odd';
+        } else if (pageRangeType === 'even') {
+            pageRange = 'even';
+        }
+        
+        // Handle split PDF settings
+        let splitPdf = false;
+        let splitPageRange = null;
+        let splitOutputPrefix = 'split_page';
+        
+        if (pdfSplit === 'pages' && splitRange.trim()) {
+            splitPdf = true;
+            splitPageRange = splitRange.trim();
+        } else if (pdfSplit === 'single') {
+            splitPdf = true;
+            splitPageRange = 'all';
+        }
+        
         return {
             copies: parseInt(document.getElementById('copies').value) || 1,
-            colorMode: document.getElementById('color-mode').value || 'auto',
-            paperSize: document.getElementById('paper-size').value || 'A4',
-            quality: document.getElementById('quality').value || 'normal'
+            color_mode: document.getElementById('color-mode').value || 'auto',
+            paper_size: document.getElementById('paper-size').value || 'A4',
+            quality: document.getElementById('quality').value || 'normal',
+            orientation: document.getElementById('orientation').value || 'portrait',
+            page_range: pageRange,
+            fit_to_page: fitToPage,
+            split_pdf: splitPdf,
+            split_page_range: splitPageRange,
+            split_output_prefix: splitOutputPrefix
+        };
+    }
+
+    getDocumentProcessingSettings() {
+        const formatConversion = document.getElementById('format-conversion').value;
+        const colorProcessing = document.getElementById('color-processing').value;
+        const brightness = parseFloat(document.getElementById('brightness').value) || 1.0;
+        const contrast = parseFloat(document.getElementById('contrast').value) || 1.0;
+        const pdfSplitType = document.getElementById('pdf-split-type').value;
+        const pdfSplitRange = document.getElementById('pdf-split-range').value;
+        
+        return {
+            format_conversion: formatConversion !== 'none' ? formatConversion : null,
+            color_processing: colorProcessing !== 'none' ? colorProcessing : null,
+            brightness: brightness !== 1.0 ? brightness : null,
+            contrast: contrast !== 1.0 ? contrast : null,
+            pdf_split_type: pdfSplitType !== 'none' ? pdfSplitType : null,
+            pdf_split_range: pdfSplitType === 'range' && pdfSplitRange.trim() ? pdfSplitRange.trim() : null
         };
     }
 
@@ -428,16 +581,73 @@ class PrintDashboard {
         `).join('');
     }
 
-    simulateJobProgress(job) {
-        const interval = setInterval(() => {
+    async monitorJobProgress(job) {
+        console.log('Starting real-time job monitoring for:', job.id);
+        
+        const interval = setInterval(async () => {
             if (job.status === 'error' || job.status === 'cancelled') {
                 clearInterval(interval);
                 this.removeJobFromQueue(job.id);
                 return;
             }
 
-            job.progress += Math.random() * 15 + 5;
+            try {
+                // Get detailed printer status for real-time monitoring
+                const response = await fetch(`/api/printers/${this.selectedPrinter}/status/detailed`);
+                if (response.ok) {
+                    const printerStatus = await response.json();
+                    
+                    // Check if our job is in the printer queue
+                    const currentJob = printerStatus.jobs?.find(pJob => 
+                        pJob.document && pJob.document.includes(job.fileName)
+                    );
+                    
+                    if (currentJob) {
+                        // Calculate progress based on pages printed
+                        if (currentJob.total_pages > 0) {
+                            job.progress = Math.min(95, (currentJob.pages_printed / currentJob.total_pages) * 100);
+                        } else {
+                            // Fallback to incremental progress
+                            job.progress = Math.min(90, job.progress + 10);
+                        }
+                        
+                        console.log(`Job ${job.id} progress: ${job.progress}% (${currentJob.pages_printed}/${currentJob.total_pages} pages)`);
+                    } else {
+                        // Job not found in printer queue - might be completed or processing
+                        if (job.progress < 95) {
+                            job.progress = Math.min(95, job.progress + 15);
+                        } else {
+                            // Job likely completed
+                            job.progress = 100;
+                            job.status = 'completed';
+                            console.log(`Job ${job.id} completed - no longer in printer queue`);
+                            clearInterval(interval);
+                            setTimeout(() => {
+                                this.removeJobFromQueue(job.id);
+                            }, 2000);
+                        }
+                    }
+                    
+                    // Check printer status for errors
+                    if (printerStatus.status === 'error' || printerStatus.status === 'offline') {
+                        job.status = 'error';
+                        job.error = `Printer ${printerStatus.status}: ${printerStatus.message || 'Unknown error'}`;
+                        clearInterval(interval);
+                        this.removeJobFromQueue(job.id);
+                        return;
+                    }
+                } else {
+                    console.warn('Failed to get printer status, using fallback progress');
+                    // Fallback to simulated progress if API fails
+                    job.progress += Math.random() * 10 + 5;
+                }
+            } catch (error) {
+                console.error('Error monitoring job progress:', error);
+                // Fallback to simulated progress on error
+                job.progress += Math.random() * 10 + 5;
+            }
             
+            // Ensure progress doesn't exceed 100%
             if (job.progress >= 100) {
                 job.progress = 100;
                 job.status = 'completed';
@@ -448,7 +658,7 @@ class PrintDashboard {
             }
 
             this.updateJobInQueue(job);
-        }, 1000);
+        }, 2000); // Check every 2 seconds for more accurate monitoring
     }
 
     cancelJob(jobId) {
@@ -598,6 +808,131 @@ class PrintDashboard {
 
     hideLoadingOverlay() {
         document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    // Document Manipulation Functions
+    async applyDocumentProcessing() {
+        if (!this.currentFileId) {
+            this.showMessage('No file selected for processing', 'error');
+            return;
+        }
+
+        const settings = this.getDocumentProcessingSettings();
+        
+        try {
+            this.showLoadingOverlay('Processing document...');
+            
+            const response = await fetch('/api/files/manipulate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_id: this.currentFileId,
+                    settings: settings
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Processing failed');
+            }
+
+            const result = await response.json();
+            this.currentFileId = result.processed_file_id;
+            
+            this.showMessage('Document processed successfully', 'success');
+            
+            // Update preview with processed document
+            await this.updatePreviewWithProcessed(result);
+            
+        } catch (error) {
+            this.showMessage(`Processing error: ${error.message}`, 'error');
+            console.error('Document processing error:', error);
+        } finally {
+            this.hideLoadingOverlay();
+        }
+    }
+
+    async previewProcessedDocument() {
+        if (!this.currentFileId) {
+            this.showMessage('No file selected for preview', 'error');
+            return;
+        }
+
+        const settings = this.getDocumentProcessingSettings();
+        
+        try {
+            this.showLoadingOverlay('Generating preview...');
+            
+            const response = await fetch('/api/files/preview-processed', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_id: this.currentFileId,
+                    settings: settings
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Preview generation failed');
+            }
+
+            const result = await response.json();
+            
+            // Update preview with processed version
+            await this.updatePreviewWithProcessed(result);
+            
+            this.showMessage('Preview updated with processed document', 'success');
+            
+        } catch (error) {
+            this.showMessage(`Preview error: ${error.message}`, 'error');
+            console.error('Preview generation error:', error);
+        } finally {
+            this.hideLoadingOverlay();
+        }
+    }
+
+    getDocumentProcessingSettings() {
+        return {
+            target_format: document.getElementById('target-format').value,
+            color_processing: document.getElementById('color-processing').value,
+            brightness: parseInt(document.getElementById('brightness').value),
+            contrast: parseInt(document.getElementById('contrast').value),
+            pdf_split: document.getElementById('pdf-split').value,
+            split_range: document.getElementById('split-range').value
+        };
+    }
+
+    async updatePreviewWithProcessed(result) {
+        const previewContent = document.getElementById('preview-content');
+        
+        if (result.preview_url) {
+            // If server provides a preview URL, use it
+            const embed = document.createElement('embed');
+            embed.src = result.preview_url;
+            embed.type = 'application/pdf';
+            embed.style.width = '100%';
+            embed.style.height = '300px';
+            
+            previewContent.innerHTML = '';
+            previewContent.appendChild(embed);
+        } else if (result.processed_file_id) {
+            // Use the processed file ID to generate preview
+            const previewUrl = `/api/files/${result.processed_file_id}/preview`;
+            
+            const embed = document.createElement('embed');
+            embed.src = previewUrl;
+            embed.type = 'application/pdf';
+            embed.style.width = '100%';
+            embed.style.height = '300px';
+            
+            previewContent.innerHTML = '';
+            previewContent.appendChild(embed);
+        }
     }
 }
 

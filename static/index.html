@@ -306,14 +306,277 @@
             border: 1px solid #c3e6cb;
         }
 
+        .info-message {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #bee5eb;
+        }
+
+        .info-message {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Preview Styles */
+        #preview-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #preview-content iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        #preview-content img {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        
+        .preview-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .file-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-icon {
+            font-size: 24px;
+        }
+        
+        .file-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
             }
             
-            .side-panel {
-                order: -1;
+            async uploadFile(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            }
+            
+            showPreview(file, uploadResult = null) {
+                const previewContainer = document.getElementById('preview-container');
+                const previewContent = document.getElementById('preview-content');
+                
+                // Clear previous content
+                previewContent.innerHTML = '';
+                
+                const fileType = file.type;
+                const fileName = file.name.toLowerCase();
+                
+                // Show loading message
+                const loadingDiv = document.createElement('div');
+                loadingDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; height: 100%; color: #666;';
+                loadingDiv.innerHTML = '<div>Loading preview...</div>';
+                previewContent.appendChild(loadingDiv);
+                
+                if (uploadResult && uploadResult.preview_url) {
+                    // Use server preview URL for PDF and DOCX files
+                    if (fileName.endsWith('.pdf') || fileName.endsWith('.docx')) {
+                        const iframe = document.createElement('iframe');
+                        iframe.src = uploadResult.preview_url;
+                        iframe.style.cssText = 'width: 100%; height: 100%; border: none;';
+                        iframe.onload = () => {
+                            previewContent.removeChild(loadingDiv);
+                        };
+                        iframe.onerror = () => {
+                            this.showPreviewError(file, previewContent, loadingDiv);
+                        };
+                        previewContent.appendChild(iframe);
+                    } else {
+                        this.showClientSidePreview(file, previewContent, loadingDiv);
+                    }
+                } else {
+                    this.showClientSidePreview(file, previewContent, loadingDiv);
+                }
+                
+                // Store current file for printing and document processing
+                this.currentPreviewFile = file.name;
+                this.currentUploadResult = uploadResult;
+                
+                // Show preview container
+                previewContainer.style.display = 'flex';
+            }
+            
+            showClientSidePreview(file, previewContent, loadingDiv) {
+                const fileType = file.type;
+                const fileName = file.name.toLowerCase();
+                
+                if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
+                    // PDF Preview
+                    const iframe = document.createElement('iframe');
+                    iframe.src = URL.createObjectURL(file);
+                    iframe.style.cssText = 'width: 100%; height: 100%; border: none;';
+                    iframe.onload = () => {
+                        if (loadingDiv.parentNode) {
+                            previewContent.removeChild(loadingDiv);
+                        }
+                    };
+                    previewContent.appendChild(iframe);
+                    
+                } else if (fileType.startsWith('image/')) {
+                    // Image Preview
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.cssText = 'max-width: 100%; max-height: 100%; object-fit: contain;';
+                    img.onload = () => {
+                        if (loadingDiv.parentNode) {
+                            previewContent.removeChild(loadingDiv);
+                        }
+                    };
+                    previewContent.appendChild(img);
+                    
+                } else if (fileName.endsWith('.txt')) {
+                    // Text file preview
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const pre = document.createElement('pre');
+                        pre.style.cssText = 'white-space: pre-wrap; padding: 20px; font-family: monospace; overflow: auto; height: 100%; background: #f8f9fa;';
+                        pre.textContent = e.target.result;
+                        if (loadingDiv.parentNode) {
+                            previewContent.removeChild(loadingDiv);
+                        }
+                        previewContent.appendChild(pre);
+                    };
+                    reader.readAsText(file);
+                    
+                } else {
+                    this.showPreviewError(file, previewContent, loadingDiv);
+                }
+            }
+            
+            showPreviewError(file, previewContent, loadingDiv) {
+                // Unsupported file type or error
+                const message = document.createElement('div');
+                message.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: #666;';
+                message.innerHTML = `
+                    <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                    <h3>${file.name}</h3>
+                    <p>Preview tidak tersedia untuk tipe file ini</p>
+                    <p>Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p style="font-size: 12px; color: #999;">File telah diupload dan siap untuk dicetak</p>
+                `;
+                if (loadingDiv.parentNode) {
+                    previewContent.removeChild(loadingDiv);
+                }
+                previewContent.appendChild(message);
+            }
+            
+            closePreview() {
+                const previewContainer = document.getElementById('preview-container');
+                previewContainer.style.display = 'none';
+                this.currentPreviewFile = null;
+            }
+            
+            removeFile(filename) {
+                this.uploadedFiles = this.uploadedFiles.filter(item => item.file.name !== filename);
+                
+                if (this.uploadedFiles.length === 0) {
+                    const printSettings = document.getElementById('print-settings');
+                    printSettings.style.display = 'none';
+                }
+            }
+            
+            proceedToPrint() {
+                 if (this.currentPreviewFile) {
+                     this.closePreview();
+                     // Focus on print settings
+                     const printSettings = document.getElementById('print-settings');
+                     printSettings.scrollIntoView({ behavior: 'smooth' });
+                 }
+             }
+         }
+         
+         .side-panel {
+             order: -1;
+            }
+            
+            #preview-content iframe {
+                height: 300px;
+            }
+            
+            .file-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .file-actions {
+                width: 100%;
+                justify-content: flex-end;
             }
         }
     </style>
@@ -338,10 +601,24 @@
                 <div class="upload-area" id="upload-area">
                     <div class="upload-icon">📄</div>
                     <p>Drag and drop files here or click to browse</p>
-                    <p style="font-size: 14px; color: #666; margin-top: 10px;">Supported: PDF, DOC, DOCX, TXT, Images</p>
-                    <input type="file" id="file-input" style="display: none;" multiple>
+                    <p style="font-size: 14px; color: #666; margin-top: 10px;">Supported: PDF, DOC, DOCX, XLS, XLSX, TXT, Images</p>
+                    <input type="file" id="file-input" style="display: none;" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif">
                 </div>
                 <div id="file-list"></div>
+                
+                <!-- Document Preview Section -->
+                <div id="preview-section" style="display: none; margin-top: 20px;">
+                    <h3 class="section-title">Document Preview</h3>
+                    <div id="preview-container" style="border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                        <div id="preview-content">
+                            <div class="loading">Loading preview...</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; text-align: center;">
+                        <button class="btn btn-secondary" id="close-preview-btn">Close Preview</button>
+                        <button class="btn btn-primary" id="proceed-print-btn" style="margin-left: 10px;">Proceed to Print</button>
+                    </div>
+                </div>
             </div>
 
             <div class="print-settings" id="print-settings" style="display: none;">
@@ -360,13 +637,100 @@
                         </select>
                     </div>
                     <div>
-                        <label>Color:</label>
-                        <select id="color" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label>Color Mode:</label>
+                        <select id="color-mode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="auto" selected>Auto</option>
                             <option value="color">Color</option>
                             <option value="grayscale">Grayscale</option>
+                            <option value="monochrome">Monochrome</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Paper Size:</label>
+                        <select id="paper-size" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="A4" selected>A4</option>
+                            <option value="A3">A3</option>
+                            <option value="Letter">Letter</option>
+                            <option value="Legal">Legal</option>
+                            <option value="A5">A5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Page Range:</label>
+                        <select id="page-range-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
+                            <option value="all" selected>All Pages</option>
+                            <option value="range">Page Range</option>
+                            <option value="odd">Odd Pages Only</option>
+                            <option value="even">Even Pages Only</option>
+                        </select>
+                        <input type="text" id="page-range" placeholder="e.g., 1-5, 8, 10-12" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; display: none;">
+                    </div>
+                    <div>
+                        <label>Orientation:</label>
+                        <select id="orientation" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="portrait" selected>Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Fit to Page:</label>
+                        <select id="fit-to-page" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="fit_to_page" selected>Fit to Page (90%)</option>
+                            <option value="actual_size">Actual Size</option>
+                            <option value="fit_to_paper">Fit to Paper (100%)</option>
+                            <option value="shrink_to_fit">Shrink to Fit</option>
                         </select>
                     </div>
                 </div>
+                
+                <!-- Document Manipulation Section -->
+                <div class="document-manipulation" id="document-manipulation" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
+                    <h3 class="section-title">Document Processing</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label>Convert Format:</label>
+                            <select id="target-format" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="none" selected>No Conversion</option>
+                                <option value="pdf">Convert to PDF</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Color Processing:</label>
+                            <select id="color-processing" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="none" selected>No Processing</option>
+                                <option value="grayscale">Convert to Grayscale</option>
+                                <option value="monochrome">Convert to Black & White</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Brightness:</label>
+                            <input type="range" id="brightness" min="-100" max="100" value="0" style="width: 100%;">
+                            <span id="brightness-value" style="font-size: 12px; color: #666;">0</span>
+                        </div>
+                        <div>
+                            <label>Contrast:</label>
+                            <input type="range" id="contrast" min="-100" max="100" value="0" style="width: 100%;">
+                            <span id="contrast-value" style="font-size: 12px; color: #666;">0</span>
+                        </div>
+                        <div>
+                            <label>PDF Split:</label>
+                            <select id="pdf-split" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="none" selected>No Split</option>
+                                <option value="pages">Split by Page Range</option>
+                                <option value="single">Split into Single Pages</option>
+                            </select>
+                        </div>
+                        <div id="split-range-container" style="display: none;">
+                            <label>Split Range:</label>
+                            <input type="text" id="split-range" placeholder="e.g., 1-3, 5-7" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="btn btn-secondary" id="apply-processing-btn" style="flex: 1;">📝 Apply Processing</button>
+                        <button class="btn btn-info" id="preview-processed-btn" style="flex: 1;">👁️ Preview Processed</button>
+                    </div>
+                </div>
+                
                 <button class="btn btn-primary" id="print-btn" style="width: 100%;">🖨️ Print Document</button>
             </div>
         </div>
@@ -388,314 +752,62 @@
     </div>
 
     <script>
-        class PrintDashboard {
-            constructor() {
-                this.selectedPrinter = null;
-                this.jobs = [];
-                this.init();
-            }
-
-            async init() {
-                this.setupEventListeners();
-                await this.loadPrinters();
-                this.startJobMonitoring();
-            }
-
-            setupEventListeners() {
-                // Printer selection
-                document.getElementById('printer-select').addEventListener('change', (e) => {
-                    this.handlePrinterSelect(e.target.value);
-                });
-
-                // File upload
-                const uploadArea = document.getElementById('upload-area');
-                const fileInput = document.getElementById('file-input');
-
-                uploadArea.addEventListener('click', () => fileInput.click());
-                uploadArea.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    uploadArea.classList.add('dragover');
-                });
-                uploadArea.addEventListener('dragleave', () => {
-                    uploadArea.classList.remove('dragover');
-                });
-                uploadArea.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    uploadArea.classList.remove('dragover');
-                    this.handleFiles(e.dataTransfer.files);
-                });
-
-                fileInput.addEventListener('change', (e) => {
-                    this.handleFiles(e.target.files);
-                });
-
-                // Print actions
-                document.getElementById('print-btn').addEventListener('click', () => {
-                    this.printDocument();
-                });
-
-                document.getElementById('test-print-btn').addEventListener('click', () => {
-                    this.printTestPage();
-                });
-
-                document.getElementById('clear-queue-btn').addEventListener('click', () => {
-                    this.clearQueue();
-                });
-            }
-
-            async loadPrinters() {
-                try {
-                    const response = await fetch('/api/printers');
-                    const data = await response.json();
-                    const printers = data.printers || data; // Handle both formats
-                    
-                    const select = document.getElementById('printer-select');
-                    select.innerHTML = '<option value="">Select a printer...</option>';
-                    
-                    // Filter only active/online printers
-                    const activePrinters = [];
-                    for (const printer of printers) {
-                        const statusResponse = await fetch(`/api/printers/${printer.id}/status`);
-                        const status = await statusResponse.json();
-                        
-                        if (status.status === 'online' || status.status === 'busy') {
-                            activePrinters.push({...printer, status: status});
-                        }
-                    }
-                    
-                    activePrinters.forEach(printer => {
-                        const option = document.createElement('option');
-                        option.value = printer.id;
-                        option.textContent = `${printer.name} (${printer.status.status})`;
-                        select.appendChild(option);
-                    });
-                    
-                    if (activePrinters.length === 0) {
-                        select.innerHTML = '<option value="">No active printers found</option>';
-                    }
-                } catch (error) {
-                    console.error('Error loading printers:', error);
-                    this.showError('Failed to load printers');
-                }
-            }
-
-            async handlePrinterSelect(printerId) {
-                this.selectedPrinter = printerId;
-                if (printerId) {
-                    await this.updatePrinterStatus(printerId);
+        // Document manipulation event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Document manipulation controls
+            document.getElementById('brightness').addEventListener('input', (e) => {
+                document.getElementById('brightness-value').textContent = e.target.value;
+            });
+            
+            document.getElementById('contrast').addEventListener('input', (e) => {
+                document.getElementById('contrast-value').textContent = e.target.value;
+            });
+            
+            document.getElementById('pdf-split').addEventListener('change', (e) => {
+                const splitRangeContainer = document.getElementById('split-range-container');
+                if (e.target.value === 'pages') {
+                    splitRangeContainer.style.display = 'block';
                 } else {
-                    document.getElementById('printer-status').className = 'status-indicator status-offline';
-                    document.getElementById('printer-status').textContent = 'Offline';
+                    splitRangeContainer.style.display = 'none';
                 }
-            }
+            });
+            
+            document.getElementById('apply-processing-btn').addEventListener('click', () => {
+                window.dashboard.applyDocumentProcessing();
+            });
+            
+            document.getElementById('preview-processed-btn').addEventListener('click', () => {
+                window.dashboard.previewProcessedDocument();
+            });
+        });
 
-            async updatePrinterStatus(printerId) {
-                try {
-                    const response = await fetch(`/api/printers/${printerId}/status`);
-                    const status = await response.json();
-                    
-                    const statusElement = document.getElementById('printer-status');
-                    statusElement.className = `status-indicator status-${status.status}`;
-                    statusElement.textContent = status.status.charAt(0).toUpperCase() + status.status.slice(1);
-                } catch (error) {
-                    console.error('Error updating printer status:', error);
-                }
-            }
 
-            handleFiles(files) {
-                const fileList = document.getElementById('file-list');
-                const printSettings = document.getElementById('print-settings');
-                
-                fileList.innerHTML = '';
-                
-                Array.from(files).forEach(file => {
-                    const fileItem = document.createElement('div');
-                    fileItem.style.cssText = 'background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center;';
-                    fileItem.innerHTML = `
-                        <span>📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="this.parentElement.remove()">Remove</button>
-                    `;
-                    fileList.appendChild(fileItem);
-                });
-                
-                if (files.length > 0) {
-                    printSettings.style.display = 'block';
-                }
-            }
 
-            async printDocument() {
-                if (!this.selectedPrinter) {
-                    this.showError('Please select a printer first');
-                    return;
-                }
 
-                const fileInput = document.getElementById('file-input');
-                if (!fileInput.files.length) {
-                    this.showError('Please select files to print');
-                    return;
-                }
+            
 
-                try {
-                    const files = Array.from(fileInput.files);
-                    
-                    for (const file of files) {
-                        // Upload file first
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        
-                        const uploadResponse = await fetch('/api/files/upload', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        if (!uploadResponse.ok) {
-                            const uploadError = await uploadResponse.json();
-                            this.showError(`Failed to upload ${file.name}: ${uploadError.detail || 'Unknown error'}`);
-                            continue;
-                        }
-                        
-                        const uploadResult = await uploadResponse.json();
-                        
-                        // Submit print job
-                        const jobData = {
-                            printer_id: this.selectedPrinter,
-                            file_id: uploadResult.file_id,
-                            settings: {
-                                copies: parseInt(document.getElementById('copies').value),
-                                quality: document.getElementById('quality').value,
-                                color_mode: document.getElementById('color').value
-                            }
-                        };
-                        
-                        const jobResponse = await fetch('/api/jobs/submit', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(jobData)
-                        });
-                        
-                        const jobResult = await jobResponse.json();
-                        if (jobResponse.ok) {
-                            this.showSuccess(`Print job submitted successfully for ${file.name}`);
-                        } else {
-                            this.showError(`Print failed for ${file.name}: ${jobResult.detail || 'Unknown error'}`);
-                        }
-                    }
-                    
-                    this.clearFiles();
-                } catch (error) {
-                    console.error('Error printing document:', error);
-                    this.showError('Failed to submit print job');
-                }
-            }
 
-            async printTestPage() {
-                if (!this.selectedPrinter) {
-                    this.showError('Please select a printer first');
-                    return;
-                }
-
-                try {
-                    const response = await fetch('/api/print/test', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            printer_id: this.selectedPrinter
-                        })
-                    });
-
-                    const result = await response.json();
-                    if (response.ok) {
-                        this.showSuccess('Test page sent to printer');
-                    } else {
-                        this.showError(result.detail || 'Test print failed');
-                    }
-                } catch (error) {
-                    console.error('Error printing test page:', error);
-                    this.showError('Failed to print test page');
-                }
-            }
-
-            clearFiles() {
-                document.getElementById('file-input').value = '';
-                document.getElementById('file-list').innerHTML = '';
-                document.getElementById('print-settings').style.display = 'none';
-            }
-
-            async clearQueue() {
-                // Implementation for clearing print queue
-                this.showSuccess('Print queue cleared');
-            }
-
-            startJobMonitoring() {
-                // Poll for job updates every 2 seconds
-                setInterval(() => {
-                    this.updateJobList();
-                }, 2000);
-            }
-
-            async updateJobList() {
-                try {
-                    const response = await fetch('/api/jobs');
-                    if (response.ok) {
-                        const jobs = await response.json();
-                        this.displayJobs(jobs);
-                    }
-                } catch (error) {
-                    // Silently handle errors for background polling
-                }
-            }
-
-            displayJobs(jobs) {
-                const jobList = document.getElementById('job-list');
-                
-                if (jobs.length === 0) {
-                    jobList.innerHTML = '<div class="loading">No jobs yet</div>';
-                    return;
-                }
-
-                jobList.innerHTML = jobs.map(job => `
-                    <div class="job-item">
-                        <div class="job-header">
-                            <span class="job-id">Job #${job.id}</span>
-                            <span class="job-status status-${job.status}">${job.status}</span>
-                        </div>
-                        <div class="job-details">
-                            <div>Printer: ${job.printer_name || 'Unknown'}</div>
-                            <div>File: ${job.filename || 'Test Page'}</div>
-                            <div>Time: ${new Date(job.created_at).toLocaleTimeString()}</div>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            showError(message) {
-                this.showMessage(message, 'error');
-            }
-
-            showSuccess(message) {
-                this.showMessage(message, 'success');
-            }
-
-            showMessage(message, type) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `${type}-message`;
-                messageDiv.textContent = message;
-                
-                document.querySelector('.main-panel').insertBefore(messageDiv, document.querySelector('.printer-section'));
-                
-                setTimeout(() => {
-                    messageDiv.remove();
-                }, 5000);
-            }
-        }
-
+    </script>
+    <script src="dashboard.js"></script>
+    <script>
         // Initialize dashboard when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            new PrintDashboard();
+        document.addEventListener('DOMContentLoaded', function() {
+            window.dashboard = new PrintDashboard();
+            
+            // Handle page range type change
+            const pageRangeType = document.getElementById('page-range-type');
+            const pageRangeInput = document.getElementById('page-range');
+            
+            pageRangeType.addEventListener('change', function() {
+                if (this.value === 'range') {
+                    pageRangeInput.style.display = 'block';
+                    pageRangeInput.required = true;
+                } else {
+                    pageRangeInput.style.display = 'none';
+                    pageRangeInput.required = false;
+                    pageRangeInput.value = '';
+                }
+            });
         });
     </script>
 </body>

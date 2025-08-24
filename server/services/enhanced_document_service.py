@@ -777,6 +777,66 @@ class EnhancedDocumentService:
                 'error': str(e)
             }
     
+    def get_excel_preview(self, file_path: str, sheet_name: str = None, sheet_index: int = None) -> Dict[str, Any]:
+        """Generate preview untuk Excel file"""
+        try:
+            # Load workbook
+            workbook = load_workbook(file_path, data_only=True)
+            
+            # Determine which sheet to use
+            if sheet_name:
+                if sheet_name in workbook.sheetnames:
+                    sheet = workbook[sheet_name]
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Sheet "{sheet_name}" not found'
+                    }
+            elif sheet_index is not None:
+                if 0 <= sheet_index < len(workbook.sheetnames):
+                    sheet = workbook.worksheets[sheet_index]
+                else:
+                    return {
+                        'success': False,
+                        'error': f'Sheet index {sheet_index} out of range'
+                    }
+            else:
+                sheet = workbook.active
+            
+            # Extract data (maksimal 20 baris untuk preview)
+            preview_data = []
+            max_rows = min(20, sheet.max_row)
+            max_cols = min(15, sheet.max_column)
+            
+            for row in range(1, max_rows + 1):
+                row_data = []
+                for col in range(1, max_cols + 1):
+                    cell = sheet.cell(row=row, column=col)
+                    row_data.append(str(cell.value) if cell.value is not None else "")
+                preview_data.append(row_data)
+            
+            return {
+                'success': True,
+                'type': 'excel',
+                'preview_available': True,
+                'sheet_names': workbook.sheetnames,
+                'active_sheet': sheet.title,
+                'preview_data': preview_data,
+                'total_rows': sheet.max_row,
+                'total_columns': sheet.max_column,
+                'displayed_rows': max_rows,
+                'displayed_columns': max_cols
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating Excel preview: {e}")
+            return {
+                'success': False,
+                'type': 'error',
+                'preview_available': False,
+                'error': str(e)
+            }
+    
     def cleanup_temp_files(self, older_than_hours: int = 24) -> int:
         """Bersihkan file temporary yang lama"""
         try:

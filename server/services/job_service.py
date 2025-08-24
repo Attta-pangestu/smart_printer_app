@@ -127,7 +127,7 @@ class JobService:
                 
                 logger.info(f"Processing document with settings: {document_settings}")
                 processed_file_info = document_service.process_document(file_path, document_settings)
-                processed_file_path = processed_file_info['path']
+                processed_file_path = processed_file_info['output_path']
                 logger.info(f"Document processed successfully: {processed_file_path}")
             except Exception as e:
                 logger.error(f"Document processing failed: {e}")

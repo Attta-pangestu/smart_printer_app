@@ -112,6 +112,52 @@ class PreviewRequest(BaseModel):
             }
         }
 
+class ExcelPreviewRequest(BaseModel):
+    file_id: str
+    sheet_name: Optional[str] = None
+    sheet_index: Optional[int] = None
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "file_id": "excel_123456",
+                "sheet_name": "Sheet1",
+                "sheet_index": 0
+            }
+        }
+
+class SpreadsheetUploadRequest(BaseModel):
+    preserve_formatting: bool = True
+    max_rows: int = 100
+    max_columns: int = 20
+
+class ExcelToPDFRequest(BaseModel):
+    file_id: str
+    preserve_formatting: bool = True
+    preserve_charts: bool = True
+    preserve_images: bool = True
+    preserve_formulas: bool = True
+    preserve_colors: bool = True
+    preserve_fonts: bool = True
+    preserve_borders: bool = True
+    preserve_alignment: bool = True
+    fit_to_page: bool = True
+    high_quality: bool = True
+    include_all_sheets: bool = True
+    page_orientation: str = "auto"  # auto, portrait, landscape
+    paper_size: str = "A4"  # A4, A3, A5, Letter, Legal
+    margins: str = "normal"  # normal, narrow, wide
+    conversion_method: str = "auto"  # auto, com, openpyxl, basic50
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "preserve_formatting": True,
+                "max_rows": 1000,
+                "max_columns": 50
+            }
+        }
+
 # Helper function to get file path from file_id
 def get_file_path_from_id(file_id: str) -> str:
     """Get actual file path from file_id"""
@@ -119,16 +165,56 @@ def get_file_path_from_id(file_id: str) -> str:
     # For now, assuming files are stored in uploads directory
     uploads_dir = Path("uploads")
     
-    # Try to find file with this ID
+    # Try to find file with this ID - file_id is the actual filename with timestamp
+    # First try exact match
+    exact_path = uploads_dir / file_id
+    if exact_path.exists() and exact_path.is_file():
+        return str(exact_path)
+    
+    # If not exact match, try pattern matching for files ending with the file_id
+    # This handles cases where file_id might be the original filename without timestamp
+    for file_path in uploads_dir.glob(f"*_{file_id}"):
+        if file_path.is_file():
+            return str(file_path)
+    
+    # Also try pattern matching for files containing the file_id
     for file_path in uploads_dir.glob(f"*{file_id}*"):
         if file_path.is_file():
             return str(file_path)
     
     # If not found, try temp directory
     temp_dir = Path("temp")
+    
+    # Try exact match in temp
+    exact_temp_path = temp_dir / file_id
+    if exact_temp_path.exists() and exact_temp_path.is_file():
+        return str(exact_temp_path)
+    
+    # Try pattern matching in temp
+    for file_path in temp_dir.glob(f"*_{file_id}"):
+        if file_path.is_file():
+            return str(file_path)
+    
     for file_path in temp_dir.glob(f"*{file_id}*"):
         if file_path.is_file():
             return str(file_path)
+    
+    # Try server root directory as fallback
+    server_root = Path(".")
+    exact_root_path = server_root / file_id
+    if exact_root_path.exists() and exact_root_path.is_file():
+        return str(exact_root_path)
+    
+    # Try pattern matching in server root
+    for file_path in server_root.glob(f"*{file_id}*"):
+        if file_path.is_file():
+            return str(file_path)
+    
+    # Log available files for debugging
+    logger.error(f"File with ID {file_id} not found")
+    logger.error(f"Available files in uploads: {[f.name for f in uploads_dir.glob('*') if f.is_file()]}")
+    logger.error(f"Available files in temp: {[f.name for f in temp_dir.glob('*') if f.is_file()]}")
+    logger.error(f"Available files in server root: {[f.name for f in server_root.glob('*') if f.is_file()]}")
     
     raise HTTPException(status_code=404, detail=f"File with ID {file_id} not found")
 
@@ -479,6 +565,337 @@ async def cleanup_temp_files(
     except Exception as e:
         logger.error(f"Error cleaning up files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/excel-preview")
+async def get_excel_preview(
+    request: ExcelPreviewRequest,
+    service: EnhancedDocumentService = Depends(get_enhanced_document_service)
+):
+    """Get Excel file preview with sheet information"""
+    try:
+        import pandas as pd
+        import openpyxl
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        
+        # Get file path
+        file_path = get_file_path_from_id(request.file_id)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Check if file is Excel
+        if not file_path.lower().endswith(('.xlsx', '.xls')):
+            raise HTTPException(status_code=400, detail="File is not an Excel document")
+        
+        # Load Excel file
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
+        sheet_names = workbook.sheetnames
+        
+        # Determine which sheet to preview
+        if request.sheet_name:
+            if request.sheet_name not in sheet_names:
+                raise HTTPException(status_code=400, detail=f"Sheet '{request.sheet_name}' not found")
+            active_sheet = workbook[request.sheet_name]
+            sheet_index = sheet_names.index(request.sheet_name)
+        elif request.sheet_index is not None:
+            if request.sheet_index >= len(sheet_names) or request.sheet_index < 0:
+                raise HTTPException(status_code=400, detail="Invalid sheet index")
+            active_sheet = workbook[sheet_names[request.sheet_index]]
+            sheet_index = request.sheet_index
+        else:
+            # Default to first sheet
+            active_sheet = workbook.active
+            sheet_index = 0
+        
+        # Get sheet data
+        sheet_data = []
+        max_row = min(active_sheet.max_row, 100)  # Limit to 100 rows for preview
+        max_col = min(active_sheet.max_column, 20)  # Limit to 20 columns for preview
+        
+        for row in active_sheet.iter_rows(min_row=1, max_row=max_row, min_col=1, max_col=max_col, values_only=True):
+            sheet_data.append([str(cell) if cell is not None else "" for cell in row])
+        
+        # Get sheet info
+        sheet_info = []
+        for i, name in enumerate(sheet_names):
+            sheet = workbook[name]
+            sheet_info.append({
+                "index": i,
+                "name": name,
+                "rows": sheet.max_row,
+                "columns": sheet.max_column,
+                "is_active": i == sheet_index
+            })
+        
+        workbook.close()
+        
+        return {
+            "success": True,
+            "file_id": request.file_id,
+            "sheets": sheet_info,
+            "active_sheet": {
+                "name": sheet_names[sheet_index],
+                "index": sheet_index,
+                "data": sheet_data,
+                "total_rows": active_sheet.max_row,
+                "total_columns": active_sheet.max_column,
+                "preview_rows": len(sheet_data),
+                "preview_columns": len(sheet_data[0]) if sheet_data else 0
+            },
+            "file_info": {
+                "name": os.path.basename(file_path),
+                "size": os.path.getsize(file_path),
+                "modified": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+            }
+        }
+        
+    except ImportError as e:
+        logger.error(f"Required library not available: {e}")
+        raise HTTPException(status_code=500, detail="Excel processing libraries not available")
+    except Exception as e:
+        logger.error(f"Error processing Excel preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process Excel preview: {str(e)}")
+
+@router.post("/upload-spreadsheet")
+async def upload_spreadsheet_for_preview(
+    file: UploadFile = File(...),
+    preserve_formatting: bool = Form(True),
+    max_rows: int = Form(1000),
+    max_columns: int = Form(50)
+):
+    """Upload Excel file and return formatted spreadsheet preview"""
+    try:
+        import pandas as pd
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        import uuid
+        
+        # Validate file type
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            raise HTTPException(status_code=400, detail="File must be an Excel document (.xlsx or .xls)")
+        
+        # Generate unique file ID
+        file_id = f"spreadsheet_{uuid.uuid4().hex[:8]}"
+        
+        # Create temp directory if not exists
+        temp_dir = Path("temp")
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Save uploaded file
+        file_path = temp_dir / f"{file_id}_{file.filename}"
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Load Excel file with formatting
+        workbook = openpyxl.load_workbook(file_path, data_only=False)
+        sheet_names = workbook.sheetnames
+        
+        # Process all sheets
+        sheets_data = []
+        for i, sheet_name in enumerate(sheet_names):
+            sheet = workbook[sheet_name]
+            
+            # Get sheet dimensions
+            max_row = min(sheet.max_row, max_rows) if sheet.max_row else 1
+            max_col = min(sheet.max_column, max_columns) if sheet.max_column else 1
+            
+            # Extract data with formatting
+            sheet_data = []
+            for row_idx in range(1, max_row + 1):
+                row_data = []
+                for col_idx in range(1, max_col + 1):
+                    cell = sheet.cell(row=row_idx, column=col_idx)
+                    
+                    # Get cell value
+                    value = cell.value if cell.value is not None else ""
+                    
+                    # Get cell formatting if preserve_formatting is True
+                    cell_format = {}
+                    if preserve_formatting:
+                        # Font formatting
+                        if cell.font:
+                            cell_format['font'] = {
+                                'bold': cell.font.bold,
+                                'italic': cell.font.italic,
+                                'underline': cell.font.underline,
+                                'color': cell.font.color.rgb if cell.font.color and hasattr(cell.font.color, 'rgb') else None,
+                                'size': cell.font.size,
+                                'name': cell.font.name
+                            }
+                        
+                        # Fill/background color
+                        if cell.fill and cell.fill.start_color:
+                            cell_format['fill'] = {
+                                'color': cell.fill.start_color.rgb if hasattr(cell.fill.start_color, 'rgb') else None
+                            }
+                        
+                        # Alignment
+                        if cell.alignment:
+                            cell_format['alignment'] = {
+                                'horizontal': cell.alignment.horizontal,
+                                'vertical': cell.alignment.vertical,
+                                'wrap_text': cell.alignment.wrap_text
+                            }
+                        
+                        # Border
+                        if cell.border:
+                            cell_format['border'] = {
+                                'top': cell.border.top.style if cell.border.top else None,
+                                'bottom': cell.border.bottom.style if cell.border.bottom else None,
+                                'left': cell.border.left.style if cell.border.left else None,
+                                'right': cell.border.right.style if cell.border.right else None
+                            }
+                    
+                    row_data.append({
+                        'value': str(value),
+                        'format': cell_format if preserve_formatting else {},
+                        'row': row_idx,
+                        'col': col_idx
+                    })
+                
+                sheet_data.append(row_data)
+            
+            sheets_data.append({
+                'index': i,
+                'name': sheet_name,
+                'data': sheet_data,
+                'total_rows': sheet.max_row or 0,
+                'total_columns': sheet.max_column or 0,
+                'preview_rows': len(sheet_data),
+                'preview_columns': len(sheet_data[0]) if sheet_data else 0
+            })
+        
+        workbook.close()
+        
+        # Store file path mapping
+        file_mapping = {
+            file_id: str(file_path)
+        }
+        
+        return {
+            "success": True,
+            "file_id": file_id,
+            "filename": file.filename,
+            "sheets": sheets_data,
+            "active_sheet": sheets_data[0] if sheets_data else None,
+            "file_info": {
+                "name": file.filename,
+                "size": len(content),
+                "sheets_count": len(sheets_data),
+                "preserve_formatting": preserve_formatting,
+                "max_rows": max_rows,
+                "max_columns": max_columns
+            },
+            "message": "Spreadsheet uploaded and processed successfully"
+        }
+        
+    except ImportError as e:
+        logger.error(f"Required library not available: {e}")
+        raise HTTPException(status_code=500, detail="Excel processing libraries not available")
+    except Exception as e:
+        logger.error(f"Error processing spreadsheet upload: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process spreadsheet: {str(e)}")
+
+@router.post("/convert-excel-to-pdf")
+async def convert_excel_to_pdf(request: ExcelToPDFRequest):
+    """Konversi file Excel ke PDF dengan opsi preservasi format"""
+    try:
+        # Validasi file_id
+        if not request.file_id:
+            raise HTTPException(status_code=400, detail="file_id is required")
+        
+        # Cari file berdasarkan file_id
+        file_path = None
+        for temp_file in temp_files:
+            if temp_file["id"] == request.file_id:
+                file_path = temp_file["path"]
+                break
+        
+        if not file_path or not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Validasi apakah file adalah Excel
+        if not file_path.lower().endswith(('.xlsx', '.xls')):
+            raise HTTPException(status_code=400, detail="File must be an Excel file (.xlsx or .xls)")
+        
+        # Import service konversi PDF
+        from services.perfect_pdf_conversion_service import PerfectPDFConversionService
+        
+        # Inisialisasi service
+        pdf_service = PerfectPDFConversionService()
+        
+        # Siapkan opsi konversi
+        conversion_options = {
+            'preserve_formatting': request.preserve_formatting,
+            'preserve_charts': request.preserve_charts,
+            'preserve_images': request.preserve_images,
+            'preserve_formulas': request.preserve_formulas,
+            'preserve_colors': request.preserve_colors,
+            'preserve_fonts': request.preserve_fonts,
+            'preserve_borders': request.preserve_borders,
+            'preserve_alignment': request.preserve_alignment,
+            'fit_to_page': request.fit_to_page,
+            'high_quality': request.high_quality,
+            'include_all_sheets': request.include_all_sheets,
+            'page_orientation': request.page_orientation,
+            'paper_size': request.paper_size,
+            'margins': request.margins,
+            'conversion_method': request.conversion_method
+        }
+        
+        # Generate nama file output
+        original_filename = os.path.basename(file_path)
+        pdf_filename = os.path.splitext(original_filename)[0] + ".pdf"
+        output_path = os.path.join(TEMP_DIR, f"converted_{uuid.uuid4().hex}_{pdf_filename}")
+        
+        # Lakukan konversi
+        conversion_result = pdf_service.convert_excel_to_pdf_with_options(
+            input_path=file_path,
+            output_path=output_path,
+            options=conversion_options
+        )
+        
+        if conversion_result['status'] != 'success':
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Conversion failed: {conversion_result.get('error', 'Unknown error')}"
+            )
+        
+        # Simpan file PDF ke temp_files
+        pdf_file_id = str(uuid.uuid4())
+        temp_files.append({
+            "id": pdf_file_id,
+            "filename": pdf_filename,
+            "path": output_path,
+            "upload_time": datetime.now(),
+            "type": "application/pdf"
+        })
+        
+        # Hitung ukuran file
+        file_size = os.path.getsize(output_path)
+        
+        return {
+            "status": "success",
+            "message": "Excel file successfully converted to PDF",
+            "pdf_file_id": pdf_file_id,
+            "pdf_filename": pdf_filename,
+            "file_size": file_size,
+            "conversion_result": {
+                "method": conversion_result.get('method', 'unknown'),
+                "quality_score": conversion_result.get('quality_score', 0),
+                "features_preserved": conversion_result.get('features_preserved', {}),
+                "format_preservation": conversion_result.get('format_preservation', {})
+            },
+            "conversion_options": conversion_options,
+            "download_url": f"/api/document-manipulation/download/{pdf_file_id}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error converting Excel to PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/health")
 async def health_check():

@@ -15,8 +15,10 @@ from pathlib import Path
 from docx2pdf import convert
 
 from services import PrinterService, JobService, DiscoveryService, FileService, DocumentService
+from services.excel_pywin32_service import ExcelPyWin32Service
 from services.enhanced_document_service import EnhancedDocumentService
-from api.document_manipulation import router as document_router
+from routes.excel_pywin32_routes import router as excel_pywin32_router, init_services
+from api.document_manipulation import router as document_manipulation_router, set_enhanced_document_service
 from models.printer import Printer, PrinterInfo, PrinterDiscovery
 from models.job import PrintJob, PrintSettings, JobStatus, PrintMethod
 from models.response import (
@@ -31,6 +33,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Security setup
+security = HTTPBearer()
 
 class PrintServerApp:
     """Main application class for Epson L120 Print Server"""
@@ -58,7 +63,7 @@ class PrintServerApp:
         return {
             'server': {
                 'host': '0.0.0.0',
-                'port': 8082,
+                'port': 8000,
                 'debug': False,
                 'cors_origins': ['*']
             },
@@ -124,10 +129,19 @@ class PrintServerApp:
             temp_dir=self.config['storage']['temp_dir']
         )
         self.document_service = DocumentService()
-        self.enhanced_document_service = EnhancedDocumentService()
         self.job_service = JobService(self.printer_service, self.file_service)
         self.discovery_service = DiscoveryService(
             port=self.config['server']['port']
+        )
+        
+        # Initialize Excel PyWin32 service
+        self.excel_pywin32_service = ExcelPyWin32Service(
+            temp_dir=self.config['storage']['temp_dir']
+        )
+        
+        # Initialize Enhanced Document service
+        self.enhanced_document_service = EnhancedDocumentService(
+            temp_dir=self.config['storage']['temp_dir']
         )
     
     def _setup_routes(self):
@@ -177,10 +191,103 @@ class PrintServerApp:
                 return FileResponse(legacy_config_file)
             
             raise HTTPException(status_code=404, detail="Configuration page not found")
+        
+        @self.app.get("/excel-test", response_class=HTMLResponse)
+        async def excel_test_page():
+            """Serve Excel test page"""
+            test_file = Path(__file__).parent / "static" / "excel-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Excel test page not found")
+        
+        @self.app.get("/excel-test-simple", response_class=HTMLResponse)
+        async def excel_test_simple_page():
+            """Serve simple Excel test page"""
+            test_file = Path(__file__).parent / "static" / "excel-test-simple.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Simple Excel test page not found")
+        
+        @self.app.get("/excel-fix-test", response_class=HTMLResponse)
+        async def excel_fix_test_page():
+            """Serve Excel fix test page"""
+            test_file = Path(__file__).parent / "static" / "excel-fix-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Excel fix test page not found")
+        
+        @self.app.get("/spreadsheet-test", response_class=HTMLResponse)
+        async def spreadsheet_test_page():
+            """Serve spreadsheet test page"""
+            test_file = Path(__file__).parent / "static" / "spreadsheet-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Spreadsheet test page not found")
+        
+        @self.app.get("/pdf-conversion-test", response_class=HTMLResponse)
+        async def pdf_conversion_test_page():
+            """Serve PDF conversion test page"""
+            test_file = Path(__file__).parent / "static" / "pdf-conversion-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="PDF conversion test page not found")
+        
+        @self.app.get("/groupdocs-test", response_class=HTMLResponse)
+        async def groupdocs_test():
+            """Serve GroupDocs Excel to PDF test page"""
+            test_file = Path(__file__).parent / "static" / "groupdocs-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="GroupDocs test page not found")
+        
+        @self.app.get("/groupdocs-excel-demo")
+        async def groupdocs_excel_demo():
+            return FileResponse("web/groupdocs_excel_demo.html")
+        
+        @self.app.get("/professional-pdf-test", response_class=HTMLResponse)
+        async def professional_pdf_test_page():
+            """Serve Professional PDF conversion test page"""
+            test_file = Path(__file__).parent / "static" / "professional-pdf-test.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Professional PDF test page not found")
+        
+        @self.app.get("/perfect-pdf-conversion", response_class=HTMLResponse)
+        async def perfect_pdf_conversion_page():
+            """Serve Perfect PDF conversion page"""
+            test_file = Path(__file__).parent / "static" / "perfect-pdf-conversion.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Perfect PDF conversion page not found")
+        
+        @self.app.get("/excel-pywin32-converter", response_class=HTMLResponse)
+        async def excel_pywin32_converter_page():
+            """Serve Excel PyWin32 converter page"""
+            test_file = Path(__file__).parent / "static" / "excel-pywin32-converter.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Excel PyWin32 converter page not found")
     
     def _setup_api_routes(self):
         """Setup all API endpoints"""
-        pass  # API endpoints will be setup after class instantiation
+        self._setup_system_endpoints()
+        
+        # Initialize and include Excel PyWin32 router (only PDF conversion method)
+        init_services(self.excel_pywin32_service, self.file_service)
+        self.app.include_router(excel_pywin32_router, prefix="/api/excel-pywin32", tags=["excel-pywin32"])
+        
+        # Initialize and include Document Manipulation router
+        set_enhanced_document_service(self.enhanced_document_service)
+        self.app.include_router(document_manipulation_router, prefix="/api/document-manipulation", tags=["document-manipulation"])
     
     def _setup_event_handlers(self):
         """Setup application event handlers"""
@@ -210,795 +317,376 @@ class PrintServerApp:
             self.file_service.cleanup_temp_files()
             
             logger.info("Print server shutdown complete")
-
-# Create application instance
-server = PrintServerApp()
-app = server.app
-config = server.config
-
-# Services (for backward compatibility)
-printer_service = server.printer_service
-file_service = server.file_service
-document_service = server.document_service
-job_service = server.job_service
-discovery_service = server.discovery_service
-security = server.security
-
-def verify_auth():
-    """Verify API authentication"""
-    if not server.config['security']['enable_auth']:
+    
+    def verify_auth_with_bearer(self, credentials: HTTPAuthorizationCredentials = Depends(security)):
+        """Verify API authentication with bearer token"""
+        if not credentials or credentials.credentials != self.config['security']['api_key']:
+            raise HTTPException(status_code=401, detail="Invalid authentication")
         return True
-    return True
-
-def verify_auth_with_bearer(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Verify API authentication with bearer token"""
-    if not credentials or credentials.credentials != server.config['security']['api_key']:
-        raise HTTPException(status_code=401, detail="Invalid authentication")
-    return True
     
-def _setup_system_endpoints(server_instance):
-    """Setup system-related API endpoints"""
-    global server
-    server = server_instance
+    def _setup_system_endpoints(self):
+        """Setup system-related API endpoints"""
     
-    @server.app.get("/api/printers")
-    async def get_printers():
-        """Get available printers"""
-        printers = server.printer_service.get_all_printers(force_refresh=True)
-        return {"printers": [printer.__dict__ for printer in printers]}
+        @self.app.get("/api/printers")
+        async def get_printers():
+            """Get available printers"""
+            printers = self.printer_service.get_all_printers(force_refresh=True)
+            return {"printers": [printer.__dict__ for printer in printers]}
     
-    @server.app.get("/api/printers/{printer_id}/status")
-    async def get_printer_status(printer_id: str):
-        """Get printer status"""
-        printer = server.printer_service.get_printer(printer_id)
-        if not printer:
-            raise HTTPException(status_code=404, detail="Printer not found")
-        
-        status = server.printer_service.get_printer_status(printer_id)
-        
-        # Convert enum to string and create response object
-        status_map = {
-            "ONLINE": {"status": "online", "message": "Printer is ready"},
-            "OFFLINE": {"status": "offline", "message": "Printer is offline"},
-            "BUSY": {"status": "busy", "message": "Printer is busy"},
-            "PAUSED": {"status": "paused", "message": "Printer is paused"},
-            "ERROR": {"status": "error", "message": "Printer has an error"}
-        }
-        
-        status_str = status.name if hasattr(status, 'name') else str(status)
-        return status_map.get(status_str, {"status": "unknown", "message": "Unknown status"})
-    
-    @server.app.get("/api/printers/{printer_id}/status/detailed")
-    async def get_detailed_printer_status(printer_id: str):
-        """Get detailed printer status for real-time monitoring"""
-        printer = server.printer_service.get_printer(printer_id)
-        if not printer:
-            raise HTTPException(status_code=404, detail="Printer not found")
-        
-        detailed_status = server.printer_service.get_detailed_printer_status(printer_id)
-        
-        # Convert enum to string for JSON serialization
-        if hasattr(detailed_status['status'], 'name'):
-            detailed_status['status'] = detailed_status['status'].name
-        
-        return detailed_status
-    
-    @server.app.post("/api/files/upload")
-    async def upload_file(file: UploadFile = File(...)):
-        """Upload a file for printing"""
-        try:
-            # Validate file
-            if not file.filename:
-                raise HTTPException(status_code=422, detail="No filename provided")
+        @self.app.get("/api/printers/{printer_id}/status")
+        async def get_printer_status(printer_id: str):
+            """Get printer status"""
+            printer = self.printer_service.get_printer(printer_id)
+            if not printer:
+                raise HTTPException(status_code=404, detail="Printer not found")
             
-            # Read file content
-            file_content = await file.read()
+            status = self.printer_service.get_printer_status(printer_id)
             
-            if not file_content:
-                raise HTTPException(status_code=422, detail="Empty file uploaded")
-            
-            # Save file using FileService
-            file_info = server.file_service.save_uploaded_file(file_content, file.filename)
-            
-            # Construct preview URL
-            preview_url = f"/api/files/{file_info['name']}/preview"
-
-            return {
-                "file_id": file_info["name"],  # Use filename as file_id
-                "file_name": file_info["name"],
-                "filename": file_info["name"],
-                "file_size": file_info["size"],
-                "size": file_info["size"],
-                "file_type": file_info["type"],
-                "type": file_info["type"],
-                "upload_path": file_info["path"],
-                "path": file_info["path"],
-                "pages_detected": file_info.get("pages", None),
-                "preview_url": preview_url
+            # Convert enum to string and create response object
+            status_map = {
+                "ONLINE": {"status": "online", "message": "Printer is ready"},
+                "OFFLINE": {"status": "offline", "message": "Printer is offline"},
+                "BUSY": {"status": "busy", "message": "Printer is busy"},
+                "PAUSED": {"status": "paused", "message": "Printer is paused"},
+                "ERROR": {"status": "error", "message": "Printer has an error"}
             }
-        except HTTPException:
-            raise
-        except ValueError as e:
-            raise HTTPException(status_code=422, detail=str(e))
-        except Exception as e:
-            logger.error(f"Upload error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during file upload")
-    
-    @server.app.get("/api/files/{file_id}/preview")
-    async def get_file_preview(file_id: str):
-        """Get preview URL for uploaded file"""
-        try:
-            # Validate file exists
-            file_path = server.file_service.upload_dir / file_id
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="File not found")
-
-            # Check file type and return appropriate response
-            if file_id.lower().endswith('.pdf'):
+            
+            return status_map.get(status.name, {"status": "unknown", "message": "Unknown status"})
+        
+        @self.app.get("/api/jobs")
+        async def get_jobs():
+            """Get all print jobs"""
+            jobs = self.job_service.get_jobs()
+            return {"jobs": [job.__dict__ for job in jobs]}
+        
+        @self.app.get("/api/jobs/{job_id}")
+        async def get_job(job_id: str):
+            """Get specific job details"""
+            job = self.job_service.get_job(job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            return job.__dict__
+        
+        @self.app.delete("/api/jobs/{job_id}")
+        async def cancel_job(job_id: str):
+            """Cancel a print job"""
+            success = self.job_service.cancel_job(job_id)
+            if not success:
+                raise HTTPException(status_code=404, detail="Job not found")
+            return {"message": "Job cancelled successfully"}
+        
+        @self.app.post("/api/files/upload")
+        async def upload_file(file: UploadFile = File(...)):
+            """Upload a file for processing with automatic PDF conversion for non-PDF files"""
+            try:
+                # Read file content
+                file_content = await file.read()
+                
+                # Save the uploaded file
+                file_info = self.file_service.save_uploaded_file(file_content, file.filename)
+                
+                # Check if file is not PDF and convert automatically
+                file_extension = Path(file.filename).suffix.lower()
+                pdf_path = None
+                converted_to_pdf = False
+                
+                if file_extension != '.pdf':
+                    # Check if file type is supported for conversion
+                    supported_extensions = {'.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', 
+                                          '.txt', '.csv', '.jpg', '.jpeg', '.png', '.bmp', 
+                                          '.tiff', '.gif'}
+                    
+                    if file_extension in supported_extensions:
+                        try:
+                            # Convert to PDF using pywin32 service
+                            input_path = str(self.file_service.upload_dir / file_info["name"])
+                            
+                            result = self.excel_pywin32_service.convert_to_pdf(
+                                input_path=input_path
+                            )
+                            
+                            if result["success"]:
+                                pdf_path = result["output_path"]
+                                converted_to_pdf = True
+                                logger.info(f"File {file.filename} automatically converted to PDF: {pdf_path}")
+                            else:
+                                logger.warning(f"Failed to convert {file.filename} to PDF: {result.get('error', 'Unknown error')}")
+                        except Exception as conv_error:
+                            logger.error(f"Error converting {file.filename} to PDF: {conv_error}")
+                
+                response_data = {
+                    "file_id": file_info["name"],
+                    "original_name": file.filename,
+                    "size": len(file_content),
+                    "file_type": file_info.get("type", "unknown"),
+                    "converted_to_pdf": converted_to_pdf,
+                    "message": "File uploaded successfully"
+                }
+                
+                if converted_to_pdf and pdf_path:
+                    pdf_filename = Path(pdf_path).name
+                    response_data.update({
+                        "pdf_file_id": pdf_filename,
+                        "pdf_path": pdf_path,
+                        "pdf_url": f"/api/files/download/{pdf_filename}",
+                        "message": "File uploaded and automatically converted to PDF"
+                    })
+                
+                return response_data
+                
+            except Exception as e:
+                logger.error(f"Error uploading file: {e}")
+                raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        
+        @self.app.post("/api/print")
+        async def print_document(
+            file: UploadFile = File(...), 
+            printer_id: str = Form(...), 
+            copies: int = Form(1)
+        ):
+            """Print a document with automatic PDF conversion for non-PDF files"""
+            try:
+                # Read file content
+                file_content = await file.read()
+                
+                # Save the uploaded file
+                file_info = self.file_service.save_uploaded_file(file_content, file.filename)
+                
+                # Convert file_id to file_path
+                file_path = str(self.file_service.upload_dir / file_info["name"])
+                
+                # Check if file is not PDF and convert automatically for printing
+                file_extension = Path(file.filename).suffix.lower()
+                final_file_path = file_path
+                converted_for_print = False
+                
+                if file_extension != '.pdf':
+                    # Check if file type is supported for conversion
+                    supported_extensions = {'.xlsx', '.xls', '.docx', '.doc', '.pptx', '.ppt', 
+                                          '.txt', '.csv', '.jpg', '.jpeg', '.png', '.bmp', 
+                                          '.tiff', '.gif'}
+                    
+                    if file_extension in supported_extensions:
+                        try:
+                            # Convert to PDF using pywin32 service for printing
+                            result = self.excel_pywin32_service.convert_to_pdf(
+                                input_path=file_path,
+                                quality="high",
+                                preserve_formatting=True
+                            )
+                            
+                            if result["success"]:
+                                final_file_path = result["output_path"]
+                                converted_for_print = True
+                                logger.info(f"File {file.filename} automatically converted to PDF for printing: {final_file_path}")
+                            else:
+                                logger.warning(f"Failed to convert {file.filename} to PDF for printing: {result.get('error', 'Unknown error')}")
+                                # Continue with original file if conversion fails
+                        except Exception as conv_error:
+                            logger.error(f"Error converting {file.filename} to PDF for printing: {conv_error}")
+                            # Continue with original file if conversion fails
+                
+                # Create PrintSettings object
+                print_settings = PrintSettings(
+                    copies=copies,
+                    color_mode="color",
+                    paper_size="A4",
+                    orientation="portrait",
+                    quality="normal",
+                    duplex="none",
+                    fit_to_page="actual_size"
+                )
+                
+                # Submit print job with the final file path (PDF if converted, original if not)
+                job = self.job_service.submit_job(
+                    file_path=final_file_path,
+                    printer_id=printer_id,
+                    settings=print_settings,
+                    user="web_user",
+                    client_ip=None
+                )
+                
+                response_data = {
+                    "job_id": job.id,
+                    "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+                    "converted_to_pdf_for_print": converted_for_print,
+                    "message": "Print job submitted successfully"
+                }
+                
+                if converted_for_print:
+                    response_data["message"] = "File converted to PDF and print job submitted successfully"
+                
+                return response_data
+                
+            except Exception as e:
+                logger.error(f"Error printing document: {e}")
+                raise HTTPException(status_code=400, detail=str(e))
+        
+        @self.app.post("/api/excel-pywin32/convert")
+        async def convert_to_pywin32_pdf(
+            file: UploadFile = File(...),
+            quality: str = Form("high"),
+            output_filename: Optional[str] = Form(None)
+        ):
+            """Convert document to PDF using pywin32 service"""
+            try:
+                # Read file content
+                file_content = await file.read()
+                
+                # Save the uploaded file
+                file_info = self.file_service.save_uploaded_file(file_content, file.filename)
+                input_path = str(self.file_service.upload_dir / file_info["name"])
+                
+                # Convert to PDF
+                result = self.excel_pywin32_service.convert_to_pdf(
+                    input_path=input_path,
+                    output_path=output_filename,
+                    quality=quality
+                )
+                
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "input_file": file.filename,
+                        "output_path": result["output_path"],
+                        "file_size": result["file_size"],
+                        "quality": result["quality"],
+                        "conversion_method": result["conversion_method"],
+                        "metadata": result.get("metadata", {}),
+                        "message": "Document converted to PDF successfully"
+                    }
+                else:
+                    raise HTTPException(status_code=400, detail=result["error"])
+                    
+            except Exception as e:
+                logger.error(f"Error converting to PDF: {e}")
+                raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+        
+        @self.app.post("/api/excel-pywin32/preview")
+        async def get_pdf_preview(
+            request: dict
+        ):
+            """Get PDF preview with pywin32 conversion"""
+            try:
+                file_id = request.get('file_id')
+                if not file_id:
+                    raise HTTPException(status_code=400, detail="file_id is required")
+                
+                # Get file path from file service
+                input_path = str(self.file_service.upload_dir / file_id)
+                
+                # Get preview
+                result = self.excel_pywin32_service.preview_pdf_settings(input_path)
+                
+                if result["success"]:
+                    return {
+                        "success": True,
+                        "excel_info": result["excel_info"],
+                        "selected_sheets": result["selected_sheets"],
+                        "estimated_pages": result["estimated_pages"],
+                        "message": "Preview generated successfully"
+                    }
+                else:
+                    raise HTTPException(status_code=400, detail=result["error"])
+                    
+            except Exception as e:
+                logger.error(f"Error generating preview: {e}")
+                raise HTTPException(status_code=500, detail=f"Preview generation failed: {str(e)}")
+        
+        @self.app.post("/api/files/convert-to-pdf")
+        async def convert_to_pdf(
+            file: UploadFile = File(...),
+            quality: str = Form("high"),
+            preserve_formatting: bool = Form(True)
+        ):
+            """Convert file to PDF - endpoint for frontend compatibility"""
+            try:
+                # Read file content
+                file_content = await file.read()
+                
+                # Save the uploaded file
+                file_info = self.file_service.save_uploaded_file(file_content, file.filename)
+                input_path = str(self.file_service.upload_dir / file_info["name"])
+                
+                # Convert to PDF using pywin32 service
+                result = self.excel_pywin32_service.convert_to_pdf(
+                    input_path=input_path
+                )
+                
+                if result["success"]:
+                    # Return PDF file path for frontend
+                    pdf_filename = Path(result["output_path"]).name
+                    return {
+                        "success": True,
+                        "pdf_url": f"/api/files/download/{pdf_filename}",
+                        "pdf_path": result["output_path"],
+                        "file_size": result["file_size"],
+                        "quality": result["quality"],
+                        "message": "File converted to PDF successfully"
+                    }
+                else:
+                    raise HTTPException(status_code=400, detail=result["error"])
+                    
+            except Exception as e:
+                logger.error(f"Error converting file to PDF: {e}")
+                raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+        
+        @self.app.get("/api/files/download/{filename}")
+        async def download_file(filename: str):
+            """Download converted PDF file"""
+            try:
+                # Look for file in temp directory
+                file_path = Path(self.file_service.temp_dir) / filename
+                
+                if not file_path.exists():
+                    # Also check upload directory
+                    file_path = Path(self.file_service.upload_dir) / filename
+                
+                if not file_path.exists():
+                    raise HTTPException(status_code=404, detail="File not found")
+                
                 return FileResponse(
                     path=str(file_path),
-                    media_type='application/pdf',
-                    headers={"Content-Disposition": f"inline; filename={file_id}"}
+                    filename=filename,
+                    media_type="application/pdf"
                 )
-            elif file_id.lower().endswith('.docx'):
-                pdf_path = file_path.with_suffix('.pdf')
-                if not pdf_path.exists():
-                    from docx2pdf import convert
-                    convert(str(file_path), str(pdf_path))
+                
+            except Exception as e:
+                logger.error(f"Error downloading file: {e}")
+                raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+        
+        @self.app.get("/api/files/serve/{file_path:path}")
+        async def serve_file(file_path: str):
+            """Serve files from temp or upload directory"""
+            try:
+                # Clean the file path to prevent directory traversal
+                clean_path = Path(file_path).name
+                
+                # Look for file in temp directory first
+                full_path = Path(self.file_service.temp_dir) / clean_path
+                
+                if not full_path.exists():
+                    # Also check upload directory
+                    full_path = Path(self.file_service.upload_dir) / clean_path
+                
+                if not full_path.exists():
+                    logger.error(f"File not found: {file_path} (cleaned: {clean_path})")
+                    raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+                
+                # Determine media type based on file extension
+                media_type = "application/pdf" if full_path.suffix.lower() == ".pdf" else "application/octet-stream"
+                
                 return FileResponse(
-                    path=str(pdf_path),
-                    media_type='application/pdf',
-                    headers={"Content-Disposition": f"inline; filename={pdf_path.name}"}
+                    path=str(full_path),
+                    filename=clean_path,
+                    media_type=media_type
                 )
-            else:
-                # For other file types, return as octet-stream
-                return FileResponse(
-                    path=str(file_path),
-                    media_type='application/octet-stream',
-                    headers={"Content-Disposition": f"inline; filename={file_id}"}
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Preview error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during file preview")
-    
-    @server.app.post("/api/documents/process")
-    async def process_document(request_data: dict):
-        """Process document with layout settings"""
-        try:
-            file_id = request_data.get("file_id")
-            settings = request_data.get("settings", {})
-            
-            if not file_id:
-                raise HTTPException(status_code=400, detail="file_id is required")
-            
-            # Validate file exists
-            file_path = server.file_service.upload_dir / file_id
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Process document
-            processed_file_info = server.document_service.process_document(
-                str(file_path), settings
-            )
-            
-            return {
-                "success": True,
-                "processed_file": processed_file_info,
-                "original_file": file_id,
-                "settings_applied": settings
-            }
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Document processing error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during document processing")
-    
-    @server.app.get("/api/documents/{file_id}/preview")
-    async def get_processed_document_preview(file_id: str):
-        """Get preview of processed document"""
-        try:
-            # Check if file exists in processed directory
-            processed_path = server.document_service.output_dir / file_id
-            if not processed_path.exists():
-                raise HTTPException(status_code=404, detail="Processed file not found")
-            
-            return FileResponse(
-                path=str(processed_path),
-                media_type='application/pdf',
-                headers={"Content-Disposition": f"inline; filename={file_id}"}
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Processed document preview error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during processed document preview")
-    
-    @server.app.get("/api/files/serve/{file_path:path}")
-    async def serve_uploaded_file(file_path: str):
-        """Serve an uploaded file for preview."""
-        try:
-            full_path = server.file_service.upload_dir / file_path
-            if not full_path.exists() or not full_path.is_file():
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Determine media type for better browser handling
-            media_type = 'application/octet-stream'
-            if file_path.lower().endswith('.pdf'):
-                media_type = 'application/pdf'
-            elif file_path.lower().endswith(('.jpg', '.jpeg')):
-                media_type = 'image/jpeg'
-            elif file_path.lower().endswith('.png'):
-                media_type = 'image/png'
-            elif file_path.lower().endswith(('.txt', '.log')):
-                media_type = 'text/plain'
-            
-            return FileResponse(
-                path=str(full_path),
-                media_type=media_type,
-                headers={"Content-Disposition": f"inline; filename=\"{full_path.name}\""}
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"File serving error for {file_path}: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-    
-    @server.app.post("/api/files/convert-to-pdf")
-    async def convert_to_pdf(request_data: dict):
-        """Convert Excel or Word files to PDF for preview"""
-        try:
-            file_path = request_data.get("file_path")
-            file_type = request_data.get("file_type")
-            
-            if not file_path or not file_type:
-                raise HTTPException(status_code=400, detail="file_path and file_type are required")
-            
-            # Get full path
-            full_path = server.file_service.upload_dir / file_path
-            if not full_path.exists():
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Convert based on file type
-            if file_type == "excel":
-                # For Excel files, we'll use a simple conversion approach
-                pdf_path = full_path.with_suffix('.pdf')
                 
-                try:
-                    # Try to convert using pandas and matplotlib for basic Excel preview
-                    import pandas as pd
-                    import matplotlib.pyplot as plt
-                    from matplotlib.backends.backend_pdf import PdfPages
-                    
-                    # Read Excel file
-                    df = pd.read_excel(str(full_path))
-                    
-                    # Create PDF
-                    with PdfPages(str(pdf_path)) as pdf:
-                        fig, ax = plt.subplots(figsize=(11.69, 8.27))  # A4 size
-                        ax.axis('tight')
-                        ax.axis('off')
-                        
-                        # Create table
-                        table = ax.table(cellText=df.values, colLabels=df.columns, 
-                                       cellLoc='center', loc='center')
-                        table.auto_set_font_size(False)
-                        table.set_fontsize(8)
-                        table.scale(1, 1.5)
-                        
-                        pdf.savefig(fig, bbox_inches='tight')
-                        plt.close()
-                    
-                    return {"pdf_path": pdf_path.name, "success": True}
-                    
-                except Exception as e:
-                    logger.warning(f"Excel conversion failed: {e}")
-                    # Fallback: create a simple text-based PDF
-                    from reportlab.pdfgen import canvas
-                    from reportlab.lib.pagesizes import A4
-                    
-                    c = canvas.Canvas(str(pdf_path), pagesize=A4)
-                    c.drawString(100, 750, f"Excel File: {file_path}")
-                    c.drawString(100, 720, "Preview not available - file ready for printing")
-                    c.save()
-                    
-                    return {"pdf_path": pdf_path.name, "success": True}
-                    
-            elif file_type == "word":
-                # For Word files, try to convert using docx2pdf
-                pdf_path = full_path.with_suffix('.pdf')
-                
-                try:
-                    from docx2pdf import convert
-                    convert(str(full_path), str(pdf_path))
-                    return {"pdf_path": pdf_path.name, "success": True}
-                    
-                except Exception as e:
-                    logger.warning(f"Word conversion failed: {e}")
-                    # Fallback: create a simple text-based PDF
-                    from reportlab.pdfgen import canvas
-                    from reportlab.lib.pagesizes import A4
-                    
-                    c = canvas.Canvas(str(pdf_path), pagesize=A4)
-                    c.drawString(100, 750, f"Word Document: {file_path}")
-                    c.drawString(100, 720, "Preview not available - file ready for printing")
-                    c.save()
-                    
-                    return {"pdf_path": pdf_path.name, "success": True}
-            
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported file type for conversion")
-                
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Conversion error: {e}")
-            raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
-    
-    @server.app.post("/api/jobs/submit")
-    async def submit_print_job(request_data: dict):
-        """Submit a print job with full print settings"""
-        try:
-            printer_id = request_data.get("printer_id")
-            file_id = request_data.get("file_id")
-            settings = request_data.get("settings", {})
-            
-            logger.info(f"Received print job request - printer_id: '{printer_id}', file_id: '{file_id}'")
-            
-            if not printer_id or not file_id:
-                raise HTTPException(status_code=400, detail="printer_id and file_id are required")
-            
-            # Convert file_id to file_path
-            # file_id is actually the filename from upload (already includes timestamp)
-            file_path = str(server.file_service.upload_dir / file_id)
-            
-            logger.info(f"Looking for file at path: {file_path}")
-            
-            # Check if file exists
-            if not os.path.exists(file_path):
-                logger.error(f"File not found at path: {file_path}")
-                # List files in upload directory for debugging
-                upload_files = list(server.file_service.upload_dir.glob("*"))
-                logger.info(f"Available files in upload directory: {[f.name for f in upload_files]}")
-                raise HTTPException(status_code=400, detail=f"File {file_id} not found")
-            
-            # Handle print method selection
-            print_method = settings.get("print_method", "auto_rotation")
-            logger.info(f"Selected print method: {print_method}")
-            
-            # Handle advanced settings
-            fit_to_page = settings.get("fit_to_page", "fit_to_page")
-            custom_scale = settings.get("custom_scale", 100)
-            page_range_type = settings.get("page_range_type", "all")
-            page_range_custom = settings.get("page_range_custom", "")
-            
-            # Determine actual page range based on type
-            actual_page_range = ""
-            if page_range_type == "page_range":
-                actual_page_range = page_range_custom
-            elif page_range_type == "current":
-                actual_page_range = "1"  # Default to first page for current
-            
-            # Apply print method specific settings
-            if print_method == "auto_rotation":
-                # Auto Rotation: Use fit setting for optimal paper usage
-                fit_to_page = "fit_to_page"
-                actual_scale = 100
-                logger.info("Applied Auto Rotation method: fit_to_page with 100% scale")
-            elif print_method == "full_page":
-                # Full Page: Use 137% scaling for maximum coverage
-                fit_to_page = "custom"
-                actual_scale = 137
-                logger.info("Applied Full Page method: custom scale 137%")
-            elif print_method == "fit_to_page":
-                # Fit to Page (Safe): Standard fit setting
-                fit_to_page = "fit_to_page"
-                actual_scale = 100
-                logger.info("Applied Fit to Page (Safe) method: fit_to_page with 100% scale")
-            else:
-                # Default fallback
-                actual_scale = custom_scale if fit_to_page == "custom" else 100
-            
-            # Handle margin settings
-            margin_top = float(settings.get("margin_top", 0.39))
-            margin_bottom = float(settings.get("margin_bottom", 0.39))
-            margin_left = float(settings.get("margin_left", 0.39))
-            margin_right = float(settings.get("margin_right", 0.39))
-            
-            # Handle positioning settings
-            center_horizontally = settings.get("center_horizontally", True)
-            center_vertically = settings.get("center_vertically", True)
-            
-            # Create PrintSettings object from the settings data
-            print_settings = PrintSettings(
-                copies=settings.get("copies", 1),
-                color_mode=settings.get("color_mode", "color"),
-                paper_size=settings.get("paper_size", "A4"),
-                orientation=settings.get("orientation", "portrait"),
-                quality=settings.get("quality", "normal"),
-                duplex=settings.get("duplex", "none"),
-                scale=actual_scale,
-                pages_per_sheet=settings.get("pages_per_sheet", 1),
-                page_range=actual_page_range,
-                collate=settings.get("collate", True),
-                reverse_order=settings.get("reverse_order", False),
-                margins={
-                    "top": margin_top,
-                    "bottom": margin_bottom,
-                    "left": margin_left,
-                    "right": margin_right
-                },
-                custom_paper=settings.get("custom_paper"),
-                header_footer=settings.get("header_footer", {
-                    "enabled": False,
-                    "header_left": "",
-                    "header_center": "",
-                    "header_right": "",
-                    "footer_left": "",
-                    "footer_center": "",
-                    "footer_right": ""
-                }),
-                page_breaks=settings.get("page_breaks", {
-                    "avoid_page_breaks": False,
-                    "insert_manual_breaks": False,
-                    "break_positions": ""
-                }),
-                # New advanced features
-                fit_to_page=fit_to_page,
-                split_pdf=settings.get("split_pdf", False),
-                split_page_range=settings.get("split_page_range", ""),
-                split_output_prefix=settings.get("split_output_prefix", "page"),
-                # Print method for full page printing
-                print_method=print_method,
-                # Additional positioning settings
-                center_horizontally=center_horizontally,
-                center_vertically=center_vertically
-            )
-            
-            job = server.job_service.submit_job(printer_id, file_path, print_settings)
-            
-            logger.info(f"Print job submitted successfully - job_id: {job.id}")
-            return {
-                "job_id": job.id, 
-                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
-                "message": "Print job submitted successfully"
-            }
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    
-    @server.app.post("/api/jobs/test-print")
-    async def submit_test_print(printer_id: Optional[str] = Form(None), user: str = Form("test_user")):
-        """Submit a test print job"""
-        try:
-            job = server.job_service.submit_test_job(
-                printer_id=printer_id,
-                user=user,
-                client_ip=None  # Could be extracted from request if needed
-            )
-            return {
-                "job_id": job.id, 
-                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
-                "printer_id": job.printer_id,
-                "message": f"Test print job submitted to printer {job.printer_id}"
-            }
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    
-    @server.app.get("/api/jobs")
-    async def get_jobs():
-        """Get all print jobs"""
-        jobs = server.job_service.get_jobs()
-        return {"jobs": [job.__dict__ for job in jobs]}
-    
-    @server.app.get("/api/jobs/{job_id}")
-    async def get_job(job_id: str):
-        """Get specific job details"""
-        job = server.job_service.get_job(job_id)
-        if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
-        return job.__dict__
-    
-    @server.app.delete("/api/jobs/{job_id}")
-    async def cancel_job(job_id: str):
-        """Cancel a print job"""
-        success = server.job_service.cancel_job(job_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Job not found")
-        return {"message": "Job cancelled successfully"}
-    
-    @server.app.post("/api/print")
-    async def print_document(file: UploadFile = File(...), printer_id: str = Form(...), copies: int = Form(1)):
-        """Print a document directly"""
-        try:
-            # Read file content
-            file_content = await file.read()
-            
-            # Save the uploaded file
-            file_info = server.file_service.save_uploaded_file(file_content, file.filename)
-            
-            # Convert file_id to file_path
-            file_path = str(server.file_service.upload_dir / file_info["name"])
-            
-            # Create PrintSettings object
-            print_settings = PrintSettings(
-                copies=copies,
-                color_mode="color",
-                paper_size="A4",
-                orientation="portrait",
-                quality="normal",
-                duplex="none",
-                scale=100,
-                pages_per_sheet=1,
-                page_range="",
-                collate=True,
-                reverse_order=False,
-                margins={"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0},
-                custom_paper=None,
-                # New advanced features with default values
-                fit_to_page="actual_size",
-                split_pdf=False,
-                split_page_range="",
-                split_output_prefix="page"
-            )
-            
-            # Submit print job
-            job = server.job_service.submit_job(printer_id, file_path, print_settings)
-            
-            return {"job_id": job.id, "status": job.status.value if hasattr(job.status, 'value') else str(job.status), "message": "Print job submitted successfully"}
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    
-    @server.app.post("/api/print/test")
-    async def print_test_page(request_data: dict):
-        """Print a test page"""
-        try:
-            printer_id = request_data.get("printer_id")
-            if not printer_id:
-                raise HTTPException(status_code=400, detail="printer_id is required")
-            
-            job = server.job_service.submit_test_job(printer_id)
-            return {"job_id": job.id, "status": job.status, "message": "Test page job submitted successfully"}
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    
-    @server.app.post("/api/print/with-processing")
-    async def print_document_with_processing(request: DocumentProcessingRequest):
-        """Print document dengan document processing"""
-        try:
-            file_id = request.file_id
-            printer_id = request.printer_id
-            print_settings_data = request.print_settings
-            document_settings = request.document_settings
-            user = request.user
-            
-            if not file_id or not printer_id:
-                raise HTTPException(status_code=400, detail="file_id and printer_id are required")
-            
-            # Validate file exists
-            file_path = server.file_service.upload_dir / file_id
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Create PrintSettings object
-            print_settings = PrintSettings(
-                copies=print_settings_data.get("copies", 1),
-                color_mode=print_settings_data.get("color_mode", "color"),
-                paper_size=print_settings_data.get("paper_size", "A4"),
-                orientation=print_settings_data.get("orientation", "portrait"),
-                quality=print_settings_data.get("quality", "normal"),
-                duplex=print_settings_data.get("duplex", "none"),
-                scale=print_settings_data.get("scale", 100),
-                pages_per_sheet=print_settings_data.get("pages_per_sheet", 1),
-                page_range_type=print_settings_data.get("page_range_type", "all"),
-                page_range=print_settings_data.get("page_range", ""),
-                collate=print_settings_data.get("collate", True),
-                reverse_order=print_settings_data.get("reverse_order", False),
-                margins=print_settings_data.get("margins", {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}),
-                custom_paper=print_settings_data.get("custom_paper"),
-                # New advanced features
-                fit_to_page=print_settings_data.get("fit_to_page", "actual_size"),
-                split_pdf=print_settings_data.get("split_pdf", False),
-                split_page_range=print_settings_data.get("split_page_range", ""),
-                split_output_prefix=print_settings_data.get("split_output_prefix", "page")
-            )
-            
-            # Submit print job dengan document processing
-            job = server.job_service.submit_job_with_processing(
-                printer_id=printer_id,
-                file_path=str(file_path),
-                settings=print_settings,
-                document_settings=document_settings,
-                user=user
-            )
-            
-            return {
-                "job_id": job.id,
-                "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
-                "message": "Print job with document processing submitted successfully",
-                "document_settings_applied": document_settings
-            }
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Print with processing error: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during print with processing")
-    
-    @server.app.get("/api/config/printers")
-    async def get_printer_config():
-        """Get printer configuration"""
-        printers = server.printer_service.get_all_printers()
-        return {"printers": [printer.__dict__ for printer in printers]}
-    
-    @server.app.post("/api/config/printers")
-    async def update_printer_config(config_data: dict):
-        """Update printer configuration"""
-        try:
-            # Update printer configuration
-            server.printer_service.update_printer_config(config_data)
-            return {"message": "Printer configuration updated successfully"}
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    
-    @server.app.post("/api/config/printers/reload")
-    async def reload_printer_config():
-        """Reload printer configuration"""
-        try:
-            server.printer_service.reload_config()
-            return {"message": "Printer configuration reloaded successfully"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-    
-    @server.app.get("/api/status")
-    async def get_status():
-        """Get system status"""
-        uptime = datetime.now() - server.start_time
-        
-        # Get disk usage
-        disk_usage = {
-            "total": 0,
-            "used": 0,
-            "free": 0
-        }
-        
-        try:
-            import shutil
-            total, used, free = shutil.disk_usage("/")
-            disk_usage = {
-                "total": total,
-                "used": used,
-                "free": free
-            }
-        except Exception:
-            pass
-        
-        # Get memory usage
-        memory_usage = {
-            "total": 0,
-            "used": 0,
-            "available": 0
-        }
-        
-        try:
-            import psutil
-            memory = psutil.virtual_memory()
-            memory_usage = {
-                "total": memory.total,
-                "used": memory.used,
-                "available": memory.available
-            }
-        except Exception:
-            pass
-        
-        return {
-            "status": "running",
-            "uptime": str(uptime),
-            "disk_usage": disk_usage,
-            "memory_usage": memory_usage,
-            "printer_count": len(server.printer_service.get_all_printers()),
-            "active_jobs": len(server.job_service.get_jobs())
-        }
-    
-    @server.app.get("/api/network")
-    async def get_network_info():
-        """Get network information"""
-        try:
-            import socket
-            hostname = socket.gethostname()
-            local_ip = socket.gethostbyname(hostname)
-            
-            return {
-                "hostname": hostname,
-                "local_ip": local_ip,
-                "port": server.config['server']['port']
-            }
-        except Exception as e:
-            return {
-                "hostname": "unknown",
-                "local_ip": "unknown",
-                "port": server.config['server']['port'],
-                "error": str(e)
-            }
-    
-    @server.app.post("/api/printers/scan")
-    async def scan_network_printers():
-        """Scan network for available printers"""
-        try:
-            # Scan menggunakan discovery service
-            discovered_printers = server.discovery_service.scan_network_printers()
-            
-            # Juga dapatkan printer yang sudah ditemukan via mDNS
-            mdns_printers = server.discovery_service.get_discovered_printers()
-            
-            return {
-                "success": True,
-                "message": f"Found {len(discovered_printers)} network printers and {len(mdns_printers)} mDNS printers",
-                "network_printers": discovered_printers,
-                "mdns_printers": [printer.__dict__ for printer in mdns_printers],
-                "total_found": len(discovered_printers) + len(mdns_printers)
-            }
-        except Exception as e:
-            logger.error(f"Error scanning network printers: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to scan network printers: {str(e)}")
-    
-    @server.app.post("/api/discovery/start")
-    async def start_discovery():
-        """Start printer discovery service"""
-        try:
-            server.discovery_service.start_discovery()
-            server.discovery_service.start_broadcasting()
-            return {
-                "success": True,
-                "message": "Discovery service started successfully"
-            }
-        except Exception as e:
-            logger.error(f"Error starting discovery service: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to start discovery service: {str(e)}")
-    
-    @server.app.post("/api/discovery/stop")
-    async def stop_discovery():
-        """Stop printer discovery service"""
-        try:
-            server.discovery_service.stop_discovery()
-            server.discovery_service.stop_broadcasting()
-            return {
-                "success": True,
-                "message": "Discovery service stopped successfully"
-            }
-        except Exception as e:
-            logger.error(f"Error stopping discovery service: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to stop discovery service: {str(e)}")
-    
-    @server.app.get("/api/discovery/status")
-    async def get_discovery_status():
-        """Get discovery service status"""
-        try:
-            network_info = server.discovery_service.get_network_info()
-            discovered_printers = server.discovery_service.get_discovered_printers()
-            
-            return {
-                "success": True,
-                "network_info": network_info,
-                "discovered_printers": [printer.__dict__ for printer in discovered_printers],
-                "discovery_enabled": server.config['printer']['discovery']['enabled']
-            }
-        except Exception as e:
-            logger.error(f"Error getting discovery status: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to get discovery status: {str(e)}")
-    
-    @server.app.get("/health")
-    async def health_check():
-        """Health check endpoint"""
-        return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-    
-    # Include document manipulation router
-    server.app.include_router(document_router, prefix="/api/documents", tags=["documents"])
-    
-    # Set the enhanced document service for the router
-    from api.document_manipulation import set_enhanced_document_service
-    set_enhanced_document_service(server.enhanced_document_service)
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error serving file {file_path}: {e}")
+                raise HTTPException(status_code=500, detail=f"Serve failed: {str(e)}")
 
 # Main execution
 if __name__ == "__main__":
@@ -1006,9 +694,6 @@ if __name__ == "__main__":
         # Initialize the application
         print_server = PrintServerApp()
         app = print_server.app
-        
-        # Setup API endpoints after initialization
-        _setup_system_endpoints(print_server)
         
         # Run the server
         uvicorn.run(

@@ -18,6 +18,9 @@
     <!-- Mammoth.js for Word support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     
+    <!-- Excel Preview Module -->
+    <script src="/static/excel-preview.js"></script>
+    
     <style>
         :root {
             --primary-color: #2563eb;
@@ -1089,6 +1092,9 @@
                 <button class="btn" onclick="clearQueue()">
                     🗑️ Clear Queue
                 </button>
+                <button class="btn" onclick="window.open('/perfect-pdf-conversion', '_blank')" style="background: linear-gradient(135deg, #059669, #2ecc71); color: white;">
+                    📄 Perfect PDF Conversion
+                </button>
             </div>
             
             <!-- Printer Selection -->
@@ -1930,13 +1936,30 @@
                 // Generate advanced preview based on file type
                 if (file.type === 'application/pdf') {
                     // PDF preview with PDF.js
-                    await loadPDFPreview(uploadResult.file_name || uploadResult.filename, file.name);
+                    await loadPDFPreview(uploadResult.file_id, file.name);
                 } else if (file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    // Excel preview - convert to PDF first
-                    await loadExcelPreview(uploadResult, file.name);
+                    // Excel preview - check if already converted to PDF
+                    if (uploadResult.converted_to_pdf && uploadResult.pdf_file_id) {
+                        // Use already converted PDF
+                        await loadPDFPreview(uploadResult.pdf_file_id, file.name);
+                    } else {
+                        // Excel preview - convert to PDF first
+                        await loadExcelPreview(uploadResult, file.name);
+                    }
+                    
+                    // Preload Excel file for faster future access
+                    if (typeof excelPreview !== 'undefined' && excelPreview.preloadExcelFile) {
+                        excelPreview.preloadExcelFile(uploadResult.file_id);
+                    }
                 } else if (file.type.includes('document') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
-                    // Word preview - convert to PDF first
-                    await loadWordPreview(uploadResult, file.name);
+                    // Word preview - check if already converted to PDF
+                    if (uploadResult.converted_to_pdf && uploadResult.pdf_file_id) {
+                        // Use already converted PDF
+                        await loadPDFPreview(uploadResult.pdf_file_id, file.name);
+                    } else {
+                        // Word preview - convert to PDF first
+                        await loadWordPreview(uploadResult, file.name);
+                    }
                 } else if (!file.type.startsWith('image/') && !file.type.startsWith('text/')) {
                     // Generic document preview
                     await loadGenericPreview(uploadResult, file.name);
@@ -2920,39 +2943,78 @@
             const previewContainer = document.getElementById('previewContainer');
             const previewControls = document.getElementById('previewControls');
             
+            // Show Excel preview with enhanced controls
+            previewContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
+                    <div><strong>Excel Document</strong></div>
+                    <div style="color: #666; margin-top: 10px;">${fileName}</div>
+                    
+                    <!-- Enhanced Excel Preview Controls -->
+                    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                        <button onclick="openExcelPreview('${uploadResult.file_id}', '${fileName}')" 
+                                style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s;" 
+                                onmouseover="this.style.background='#1d4ed8'" 
+                                onmouseout="this.style.background='#2563eb'">
+                            📋 Open Excel Preview
+                        </button>
+                        
+                        <div style="font-size: 12px; color: #6b7280; text-align: center;">
+                            ✨ Comprehensive Excel preview with:<br>
+                            • Multiple sheet navigation<br>
+                            • Advanced print controls<br>
+                            • Cell selection & print areas
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Also try to load PDF conversion as fallback
             try {
-                // Request PDF conversion from server
+                // Get the uploaded file for conversion
+                const fileResponse = await fetch(`/api/files/download/${uploadResult.file_id}`);
+                const fileBlob = await fileResponse.blob();
+                
+                // Create form data for PDF conversion
+                const formData = new FormData();
+                formData.append('file', fileBlob, fileName);
+                formData.append('quality', 'high');
+                formData.append('preserve_formatting', 'true');
+                
                 const convertResponse = await fetch('/api/files/convert-to-pdf', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        file_path: uploadResult.file_name || uploadResult.filename,
-                        file_type: 'excel'
-                    })
+                    body: formData
                 });
                 
                 const convertResult = await convertResponse.json();
                 
                 if (convertResponse.ok && convertResult.pdf_path) {
-                    // Load converted PDF
-                    await loadPDFPreview(convertResult.pdf_path, fileName);
-                    showAlert('Excel berhasil dikonversi ke PDF untuk preview', 'success');
-                } else {
-                    throw new Error(convertResult.detail || 'Gagal konversi Excel');
+                    // Add PDF preview option
+                    const pdfButton = document.createElement('button');
+                    pdfButton.innerHTML = '📄 View as PDF';
+                    pdfButton.style.cssText = 'background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.2s; margin-top: 8px;';
+                    pdfButton.onmouseover = () => pdfButton.style.background = '#b91c1c';
+                    pdfButton.onmouseout = () => pdfButton.style.background = '#dc2626';
+                    const pdfFilename = convertResult.pdf_path.split('\\').pop().split('/').pop();
+                    pdfButton.onclick = () => loadPDFPreview(pdfFilename, fileName);
+                    
+                    const buttonContainer = previewContainer.querySelector('div[style*="margin-top: 20px"]');
+                    buttonContainer.appendChild(pdfButton);
                 }
                 
             } catch (error) {
-                console.error('Error loading Excel:', error);
-                previewContainer.innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="font-size: 48px; margin-bottom: 15px;">📊</div>
-                        <div><strong>Excel Document</strong></div>
-                        <div style="color: #666; margin-top: 10px;">${fileName}</div>
-                        <div style="color: #ffc107; margin-top: 10px;">Preview tidak tersedia</div>
-                        <div style="color: #999; margin-top: 5px; font-size: 12px;">File siap untuk dicetak</div>
-                    </div>
-                `;
-                previewControls.style.display = 'flex';
+                console.log('PDF conversion not available:', error);
+            }
+            
+            previewControls.style.display = 'flex';
+        }
+        
+        // Function to open comprehensive Excel preview
+        function openExcelPreview(fileId, fileName) {
+            if (typeof excelPreview !== 'undefined') {
+                excelPreview.loadExcelFile(fileId, fileName);
+            } else {
+                showAlert('Excel preview module not loaded', 'error');
             }
         }
         
@@ -2961,21 +3023,28 @@
             const previewControls = document.getElementById('previewControls');
             
             try {
+                // Get the uploaded file for conversion
+                const fileResponse = await fetch(`/api/files/download/${uploadResult.file_id}`);
+                const fileBlob = await fileResponse.blob();
+                
+                // Create form data for PDF conversion
+                const formData = new FormData();
+                formData.append('file', fileBlob, fileName);
+                formData.append('quality', 'high');
+                formData.append('preserve_formatting', 'true');
+                
                 // Request PDF conversion from server
                 const convertResponse = await fetch('/api/files/convert-to-pdf', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        file_path: uploadResult.file_name || uploadResult.filename,
-                        file_type: 'word'
-                    })
+                    body: formData
                 });
                 
                 const convertResult = await convertResponse.json();
                 
                 if (convertResponse.ok && convertResult.pdf_path) {
-                    // Load converted PDF
-                    await loadPDFPreview(convertResult.pdf_path, fileName);
+                    // Load converted PDF using filename from path
+                    const pdfFilename = convertResult.pdf_path.split('\\').pop().split('/').pop();
+                    await loadPDFPreview(pdfFilename, fileName);
                     showAlert('Word berhasil dikonversi ke PDF untuk preview', 'success');
                 } else {
                     throw new Error(convertResult.detail || 'Gagal konversi Word');
@@ -3166,6 +3235,14 @@
         // Initialize event listeners when page loads
         document.addEventListener('DOMContentLoaded', function() {
             setupPreviewUpdateListeners();
+            
+            // Excel Preview Manager is already initialized in excel-preview.js
+            if (typeof excelPreview !== 'undefined') {
+                window.excelPreview = excelPreview;
+                console.log('Excel Preview Manager initialized');
+            } else {
+                console.error('Excel Preview Manager not loaded');
+            }
         });
     </script>
     

@@ -88,6 +88,8 @@ pywin32-ctypes==0.2.3
 PyYAML==6.0.1
 referencing==0.36.2
 requests==2.31.0
+# GroupDocs Cloud API dependencies
+groupdocs-conversion-cloud==24.2
 rpds-py==0.27.0
 schedule==1.2.2
 scikit-learn==1.7.1
@@ -124,5 +126,13 @@ websockets==15.0.1
 Werkzeug==2.3.7
 win32_setctime==1.2.0
 wsproto==1.2.0
-XlsxWriter==3.1.9
+xlsxwriter==3.2.0
+pywin32==306
 zeroconf==0.131.0
+
+# GroupDocs Cloud API dependencies
+requests>=2.31.0
+aiofiles>=23.2.1
+aiohttp>=3.9.0
+orjson>=3.9.0
+python-dotenv>=1.0.0

@@ -17,7 +17,10 @@ from docx2pdf import convert
 from services import PrinterService, JobService, DiscoveryService, FileService, DocumentService
 from services.excel_pywin32_service import ExcelPyWin32Service
 from services.enhanced_document_service import EnhancedDocumentService
+from services.excel_visual_service import ExcelVisualService
 from routes.excel_pywin32_routes import router as excel_pywin32_router, init_services
+from routes.excel_visual_routes import router as excel_visual_router, init_visual_services
+from routes.print_settings_routes import router as print_settings_router
 from api.document_manipulation import router as document_manipulation_router, set_enhanced_document_service
 from models.printer import Printer, PrinterInfo, PrinterDiscovery
 from models.job import PrintJob, PrintSettings, JobStatus, PrintMethod
@@ -141,6 +144,11 @@ class PrintServerApp:
         
         # Initialize Enhanced Document service
         self.enhanced_document_service = EnhancedDocumentService(
+            temp_dir=self.config['storage']['temp_dir']
+        )
+        
+        # Initialize Excel Visual service
+        self.excel_visual_service = ExcelVisualService(
             temp_dir=self.config['storage']['temp_dir']
         )
     
@@ -276,6 +284,15 @@ class PrintServerApp:
                 return FileResponse(test_file)
             
             raise HTTPException(status_code=404, detail="Excel PyWin32 converter page not found")
+        
+        @self.app.get("/excel-visual-selector", response_class=HTMLResponse)
+        async def excel_visual_selector_page():
+            """Serve Excel Visual Selector page"""
+            test_file = Path(__file__).parent / "static" / "excel-visual-selector.html"
+            if test_file.exists():
+                return FileResponse(test_file)
+            
+            raise HTTPException(status_code=404, detail="Excel Visual Selector page not found")
     
     def _setup_api_routes(self):
         """Setup all API endpoints"""
@@ -285,9 +302,16 @@ class PrintServerApp:
         init_services(self.excel_pywin32_service, self.file_service)
         self.app.include_router(excel_pywin32_router, prefix="/api/excel-pywin32", tags=["excel-pywin32"])
         
+        # Initialize and include Excel Visual router (visual area selection)
+        init_visual_services(self.excel_visual_service, self.excel_pywin32_service, self.file_service)
+        self.app.include_router(excel_visual_router, prefix="/api/excel-visual", tags=["excel-visual"])
+        
         # Initialize and include Document Manipulation router
         set_enhanced_document_service(self.enhanced_document_service)
         self.app.include_router(document_manipulation_router, prefix="/api/document-manipulation", tags=["document-manipulation"])
+        
+        # Include Print Settings router
+        self.app.include_router(print_settings_router, tags=["print-settings"])
     
     def _setup_event_handlers(self):
         """Setup application event handlers"""
@@ -653,6 +677,68 @@ class PrintServerApp:
                 
             except Exception as e:
                 logger.error(f"Error downloading file: {e}")
+                raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+        
+        @self.app.get("/api/files/{file_id}")
+        async def get_file_by_id(file_id: str):
+            """Get file by file ID for spreadsheet popup"""
+            try:
+                # Look for file in upload directory first
+                file_path = Path(self.file_service.upload_dir) / file_id
+                
+                if not file_path.exists():
+                    # Also check temp directory
+                    file_path = Path(self.file_service.temp_dir) / file_id
+                
+                if not file_path.exists():
+                    raise HTTPException(status_code=404, detail="File not found")
+                
+                # Determine media type based on file extension
+                media_type = "application/octet-stream"
+                if file_path.suffix.lower() in ['.xlsx', '.xls']:
+                    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                elif file_path.suffix.lower() == '.pdf':
+                    media_type = "application/pdf"
+                
+                return FileResponse(
+                    path=str(file_path),
+                    filename=file_id,
+                    media_type=media_type
+                )
+                
+            except Exception as e:
+                logger.error(f"Error getting file by ID: {e}")
+                raise HTTPException(status_code=404, detail="File not found")
+        
+        @self.app.get("/api/files/{file_id}/download")
+        async def download_file_by_id(file_id: str):
+            """Download file by file ID for Excel popup"""
+            try:
+                # Look for file in upload directory first
+                file_path = Path(self.file_service.upload_dir) / file_id
+                
+                if not file_path.exists():
+                    # Also check temp directory
+                    file_path = Path(self.file_service.temp_dir) / file_id
+                
+                if not file_path.exists():
+                    raise HTTPException(status_code=404, detail="File not found")
+                
+                # Determine media type based on file extension
+                media_type = "application/octet-stream"
+                if file_path.suffix.lower() in ['.xlsx', '.xls']:
+                    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                elif file_path.suffix.lower() == '.pdf':
+                    media_type = "application/pdf"
+                
+                return FileResponse(
+                    path=str(file_path),
+                    filename=file_id,
+                    media_type=media_type
+                )
+                
+            except Exception as e:
+                logger.error(f"Error downloading file by ID: {e}")
                 raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
         
         @self.app.get("/api/files/serve/{file_path:path}")

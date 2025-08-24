@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to PDF Converter - PyWin32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .upload-section, .settings-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #2980b9;
+            background: #f0f8ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #27ae60;
+            background: #f0fff0;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #3498db;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-item:hover {
+            border-color: #3498db;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+
+        .checkbox-item.selected {
+            border-color: #27ae60;
+            background: #f0fff0;
+        }
+
+        .margin-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .preview-section {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .pdf-preview {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 400px;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .preview-placeholder {
+            color: #7f8c8d;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .file-info {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .file-info h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .sheet-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 10px;
+            background: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .advanced-settings {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .range-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .range-input input[type="range"] {
+            flex: 1;
+        }
+
+        .range-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .margin-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Excel to PDF Converter</h1>
+            <p>Konversi file Excel ke PDF dengan kontrol cetak yang lengkap menggunakan PyWin32</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2 class="section-title">📁 Upload File Excel</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📊</div>
+                    <h3>Drag & Drop file Excel di sini</h3>
+                    <p>atau klik untuk memilih file</p>
+                    <p><small>Mendukung format .xlsx dan .xls</small></p>
+                    <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+                </div>
+
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div id="statusMessage"></div>
+
+                <div id="fileInfo" class="file-info" style="display: none;">
+                    <h4>📋 Informasi File</h4>
+                    <div id="fileDetails"></div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="settings-section">
+                <h2 class="section-title">⚙️ Pengaturan Konversi</h2>
+
+                <div class="form-group">
+                    <label>📄 Pilih Sheet:</label>
+                    <div id="sheetSelection" class="checkbox-group">
+                        <p>Upload file Excel terlebih dahulu</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>📐 Range Cell (opsional):</label>
+                    <input type="text" id="cellRange" class="form-control" placeholder="Contoh: A1:F20">
+                    <small>Kosongkan untuk menggunakan seluruh area yang terisi</small>
+                </div>
+
+                <div class="advanced-settings">
+                    <h4>🔧 Pengaturan Lanjutan</h4>
+                    
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>📱 Orientasi:</label>
+                            <select id="orientation" class="form-control">
+                                <option value="portrait">Portrait</option>
+                                <option value="landscape">Landscape</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>📄 Ukuran Kertas:</label>
+                            <select id="paperSize" class="form-control">
+                                <option value="A4">A4</option>
+                                <option value="Letter">Letter</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🔍 Skala (%):</label>
+                        <div class="range-input">
+                            <input type="range" id="scaleRange" min="10" max="400" value="100">
+                            <span class="range-value" id="scaleValue">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📏 Margin (inch):</label>
+                        <div class="margin-controls">
+                            <div>
+                                <label>Atas:</label>
+                                <input type="number" id="marginTop" class="form-control" value="0.75" step="0.1" min="0">
+                            </div>
+                            <div>
+                                <label>Bawah:</label>
+                                <input type="number" id="marginBottom" class="form-control" value="0.75" step="0.1" min="0">
+                            </div>
+                            <div>
+                                <label>Kiri:</label>
+                                <input type="number" id="marginLeft" class="form-control" value="0.7" step="0.1" min="0">
+                            </div>
+                            <div>
+                                <label>Kanan:</label>
+                                <input type="number" id="marginRight" class="form-control" value="0.7" step="0.1" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="printGridlines"> Tampilkan garis grid
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="printHeadings"> Tampilkan header baris/kolom
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📝 Header Tengah:</label>
+                        <input type="text" id="headerCenter" class="form-control" placeholder="Contoh: Laporan Bulanan">
+                    </div>
+
+                    <div class="form-group">
+                        <label>📝 Footer Tengah:</label>
+                        <input type="text" id="footerCenter" class="form-control" placeholder="Contoh: Halaman &P dari &N">
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button id="previewBtn" class="btn" disabled>👁️ Preview Pengaturan</button>
+                    <button id="convertBtn" class="btn btn-success" disabled>🔄 Konversi ke PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <h2 class="section-title">👁️ Preview PDF</h2>
+            <div class="pdf-preview" id="pdfPreview">
+                <div class="preview-placeholder">
+                    <p>📄 Preview PDF akan muncul di sini setelah konversi</p>
+                </div>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button id="downloadBtn" class="btn btn-success" style="display: none;">⬇️ Download PDF</button>
+                <button id="printBtn" class="btn" style="display: none;">🖨️ Print PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFileId = null;
+        let currentExcelInfo = null;
+        let currentPdfUrl = null;
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const statusMessage = document.getElementById('statusMessage');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileDetails = document.getElementById('fileDetails');
+        const sheetSelection = document.getElementById('sheetSelection');
+        const previewBtn = document.getElementById('previewBtn');
+        const convertBtn = document.getElementById('convertBtn');
+        const previewSection = document.getElementById('previewSection');
+        const pdfPreview = document.getElementById('pdfPreview');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const printBtn = document.getElementById('printBtn');
+        const scaleRange = document.getElementById('scaleRange');
+        const scaleValue = document.getElementById('scaleValue');
+
+        // Upload area events
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Scale range event
+        scaleRange.addEventListener('input', (e) => {
+            scaleValue.textContent = e.target.value + '%';
+        });
+
+        // Button events
+        previewBtn.addEventListener('click', previewSettings);
+        convertBtn.addEventListener('click', convertToPdf);
+        downloadBtn.addEventListener('click', downloadPdf);
+        printBtn.addEventListener('click', printPdf);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        async function handleFile(file) {
+            if (!file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+                showStatus('File harus berformat Excel (.xlsx atau .xls)', 'error');
+                return;
+            }
+
+            showProgress(true);
+            updateProgress(20);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                updateProgress(50);
+                const response = await fetch('/api/excel-pywin32/upload-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateProgress(80);
+                const result = await response.json();
+
+                if (result.success) {
+                    currentFileId = result.file_id;
+                    currentExcelInfo = result.excel_info;
+                    
+                    updateProgress(100);
+                    showStatus('File berhasil diupload!', 'success');
+                    displayFileInfo(result);
+                    displaySheetSelection(currentExcelInfo.sheets);
+                    enableButtons();
+                } else {
+                    throw new Error(result.message || 'Upload gagal');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            } finally {
+                setTimeout(() => showProgress(false), 1000);
+            }
+        }
+
+        function showProgress(show) {
+            progressBar.style.display = show ? 'block' : 'none';
+            if (!show) {
+                updateProgress(0);
+            }
+        }
+
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
+
+        function showStatus(message, type) {
+            statusMessage.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            setTimeout(() => {
+                if (type === 'success') {
+                    statusMessage.innerHTML = '';
+                }
+            }, 5000);
+        }
+
+        function displayFileInfo(result) {
+            const info = result.excel_info;
+            fileDetails.innerHTML = `
+                <p><strong>Nama File:</strong> ${result.original_name}</p>
+                <p><strong>Jumlah Sheet:</strong> ${info.total_sheets}</p>
+                <p><strong>Ukuran:</strong> ${(result.file_size || 0 / 1024).toFixed(1)} KB</p>
+            `;
+            fileInfo.style.display = 'block';
+        }
+
+        function displaySheetSelection(sheets) {
+            sheetSelection.innerHTML = '';
+            sheets.forEach(sheet => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="sheet_${sheet.index}" value="${sheet.name}" checked>
+                    <label for="sheet_${sheet.index}">${sheet.name} (${sheet.row_count} baris)</label>
+                `;
+                
+                const checkbox = div.querySelector('input');
+                checkbox.addEventListener('change', () => {
+                    div.classList.toggle('selected', checkbox.checked);
+                });
+                
+                div.classList.add('selected');
+                sheetSelection.appendChild(div);
+            });
+        }
+
+        function enableButtons() {
+            previewBtn.disabled = false;
+            convertBtn.disabled = false;
+        }
+
+        function getSelectedSheets() {
+            const checkboxes = sheetSelection.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function getPrintSettings() {
+            return {
+                orientation: document.getElementById('orientation').value,
+                paper_size: document.getElementById('paperSize').value,
+                scale: parseInt(document.getElementById('scaleRange').value),
+                margins: {
+                    top: parseFloat(document.getElementById('marginTop').value),
+                    bottom: parseFloat(document.getElementById('marginBottom').value),
+                    left: parseFloat(document.getElementById('marginLeft').value),
+                    right: parseFloat(document.getElementById('marginRight').value)
+                },
+                print_gridlines: document.getElementById('printGridlines').checked,
+                print_headings: document.getElementById('printHeadings').checked,
+                header: {
+                    center: document.getElementById('headerCenter').value
+                },
+                footer: {
+                    center: document.getElementById('footerCenter').value
+                }
+            };
+        }
+
+        async function previewSettings() {
+            if (!currentFileId) return;
+
+            try {
+                const selectedSheets = getSelectedSheets();
+                const cellRange = document.getElementById('cellRange').value;
+                const printSettings = getPrintSettings();
+
+                const formData = new FormData();
+                formData.append('file_id', currentFileId);
+                formData.append('sheet_names', JSON.stringify(selectedSheets));
+                if (cellRange) formData.append('cell_range', cellRange);
+                formData.append('print_settings', JSON.stringify(printSettings));
+
+                const response = await fetch('/api/excel-pywin32/preview-pdf-settings', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(`Preview: ${result.estimated_pages} halaman akan dihasilkan`, 'info');
+                } else {
+                    throw new Error(result.error || 'Preview gagal');
+                }
+            } catch (error) {
+                showStatus('Error preview: ' + error.message, 'error');
+            }
+        }
+
+        async function convertToPdf() {
+            if (!currentFileId) return;
+
+            convertBtn.disabled = true;
+            convertBtn.textContent = '🔄 Mengkonversi...';
+            showProgress(true);
+
+            try {
+                const selectedSheets = getSelectedSheets();
+                const cellRange = document.getElementById('cellRange').value;
+                const printSettings = getPrintSettings();
+
+                const formData = new FormData();
+                formData.append('file_id', currentFileId);
+                formData.append('sheet_names', JSON.stringify(selectedSheets));
+                if (cellRange) formData.append('cell_range', cellRange);
+                formData.append('print_settings', JSON.stringify(printSettings));
+
+                updateProgress(30);
+
+                const response = await fetch('/api/excel-pywin32/convert-to-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateProgress(70);
+                const result = await response.json();
+
+                if (result.success) {
+                    updateProgress(100);
+                    currentPdfUrl = result.download_url;
+                    showStatus('Konversi berhasil!', 'success');
+                    displayPdfPreview(result.download_url);
+                    showPreviewSection();
+                } else {
+                    throw new Error(result.error || 'Konversi gagal');
+                }
+            } catch (error) {
+                showStatus('Error konversi: ' + error.message, 'error');
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.textContent = '🔄 Konversi ke PDF';
+                showProgress(false);
+            }
+        }
+
+        function displayPdfPreview(pdfUrl) {
+            pdfPreview.innerHTML = `
+                <iframe src="${pdfUrl}" width="100%" height="500px" style="border: none; border-radius: 8px;"></iframe>
+            `;
+            downloadBtn.style.display = 'inline-block';
+            printBtn.style.display = 'inline-block';
+        }
+
+        function showPreviewSection() {
+            previewSection.style.display = 'block';
+            previewSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadPdf() {
+            if (currentPdfUrl) {
+                window.open(currentPdfUrl, '_blank');
+            }
+        }
+
+        function printPdf() {
+            if (currentPdfUrl) {
+                const printWindow = window.open(currentPdfUrl, '_blank');
+                printWindow.onload = () => {
+                    printWindow.print();
+                };
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Excel PyWin32 Converter initialized');
+        });
+    </script>
+</body>
+</html>

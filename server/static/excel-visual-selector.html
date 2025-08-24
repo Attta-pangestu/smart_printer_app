@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Visual Area Selector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+
+        .upload-section.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e8;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .file-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .sheet-selection {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .sheet-selection label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .sheet-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+        }
+
+        .excel-preview {
+            margin: 30px 0;
+            display: none;
+        }
+
+        .preview-header {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .preview-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow: auto;
+            border: 2px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .excel-table th,
+        .excel-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            min-width: 80px;
+            position: relative;
+            user-select: none;
+        }
+
+        .excel-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .excel-table td {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .excel-table td:hover {
+            background: #e3f2fd;
+        }
+
+        .excel-table td.selected {
+            background: #4CAF50 !important;
+            color: white;
+        }
+
+        .excel-table td.in-range {
+            background: #c8e6c9 !important;
+        }
+
+        .range-input-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .range-input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .range-input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            min-width: 120px;
+        }
+
+        .range-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .range-btn:hover {
+            background: #1976D2;
+        }
+
+        .print-settings {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            display: none;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .preview-result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .selected-range-info {
+            background: #e8f5e9;
+            border: 1px solid #4CAF50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .selected-range-info h4 {
+            margin: 0 0 10px 0;
+            color: #2e7d32;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Excel Visual Area Selector</h1>
+            <p>Upload Excel file, select specific area, and convert to PDF with custom print settings</p>
+        </div>
+
+        <div class="main-content">
+            <!-- File Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <h3>📁 Upload Excel File</h3>
+                <p>Drag and drop your Excel file here or click to browse</p>
+                <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+                <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    Choose Excel File
+                </button>
+            </div>
+
+            <!-- File Information -->
+            <div class="file-info" id="fileInfo">
+                <h4>📄 File Information</h4>
+                <div id="fileDetails"></div>
+            </div>
+
+            <!-- Sheet Selection -->
+            <div class="sheet-selection" id="sheetSelection">
+                <label for="sheetSelect">Select Sheet:</label>
+                <select id="sheetSelect" class="sheet-select">
+                    <option value="">Choose a sheet...</option>
+                </select>
+            </div>
+
+            <!-- Excel Preview -->
+            <div class="excel-preview" id="excelPreview">
+                <div class="preview-header">
+                    <h3>📊 Excel Preview - Click and drag to select area</h3>
+                </div>
+                <div class="table-container">
+                    <table class="excel-table" id="excelTable">
+                        <!-- Table content will be populated by JavaScript -->
+                    </table>
+                </div>
+            </div>
+
+            <!-- Range Input Section -->
+            <div class="range-input-section" id="rangeInputSection">
+                <h4>🎯 Manual Range Selection</h4>
+                <div class="range-input-group">
+                    <input type="text" id="rangeInput" class="range-input" placeholder="e.g., A1:D10" value="">
+                    <button type="button" class="range-btn" onclick="applyManualRange()">Apply Range</button>
+                    <button type="button" class="range-btn" onclick="clearSelection()">Clear Selection</button>
+                </div>
+            </div>
+
+            <!-- Selected Range Info -->
+            <div class="selected-range-info" id="selectedRangeInfo">
+                <h4>✅ Selected Range</h4>
+                <div id="rangeDetails"></div>
+            </div>
+
+            <!-- Print Settings -->
+            <div class="print-settings" id="printSettings">
+                <h3>🖨️ Print Settings</h3>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="orientation">Page Orientation:</label>
+                        <select id="orientation" class="form-control">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paperSize">Paper Size:</label>
+                        <select id="paperSize" class="form-control">
+                            <option value="A4">A4</option>
+                            <option value="A3">A3</option>
+                            <option value="Letter">Letter</option>
+                            <option value="Legal">Legal</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scale">Scale (%):</label>
+                        <input type="number" id="scale" class="form-control" value="100" min="10" max="400">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topMargin">Top Margin (inches):</label>
+                        <input type="number" id="topMargin" class="form-control" value="0.75" step="0.25" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bottomMargin">Bottom Margin (inches):</label>
+                        <input type="number" id="bottomMargin" class="form-control" value="0.75" step="0.25" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="leftMargin">Left Margin (inches):</label>
+                        <input type="number" id="leftMargin" class="form-control" value="0.7" step="0.25" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rightMargin">Right Margin (inches):</label>
+                        <input type="number" id="rightMargin" class="form-control" value="0.7" step="0.25" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showGridlines" checked>
+                            <label for="showGridlines">Show Gridlines</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showHeadings" checked>
+                            <label for="showHeadings">Show Row/Column Headings</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="headerText">Header Text:</label>
+                        <input type="text" id="headerText" class="form-control" placeholder="Optional header text">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="footerText">Footer Text:</label>
+                        <input type="text" id="footerText" class="form-control" placeholder="Optional footer text">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" id="actionButtons" style="display: none;">
+                <button type="button" class="btn btn-primary" id="previewBtn" onclick="previewPDF()">
+                    👁️ Preview PDF Settings
+                </button>
+                <button type="button" class="btn btn-success" id="convertBtn" onclick="convertToPDF()">
+                    📄 Convert to PDF
+                </button>
+            </div>
+
+            <!-- Status Messages -->
+            <div class="status-message" id="statusMessage"></div>
+
+            <!-- Preview Result -->
+            <div class="preview-result" id="previewResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentFileId = null;
+        let currentSheetData = null;
+        let selectedRange = null;
+        let isSelecting = false;
+        let startCell = null;
+        let endCell = null;
+
+        // DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileDetails = document.getElementById('fileDetails');
+        const sheetSelection = document.getElementById('sheetSelection');
+        const sheetSelect = document.getElementById('sheetSelect');
+        const excelPreview = document.getElementById('excelPreview');
+        const excelTable = document.getElementById('excelTable');
+        const rangeInputSection = document.getElementById('rangeInputSection');
+        const rangeInput = document.getElementById('rangeInput');
+        const selectedRangeInfo = document.getElementById('selectedRangeInfo');
+        const rangeDetails = document.getElementById('rangeDetails');
+        const printSettings = document.getElementById('printSettings');
+        const actionButtons = document.getElementById('actionButtons');
+        const statusMessage = document.getElementById('statusMessage');
+        const previewResult = document.getElementById('previewResult');
+
+        // File upload handling
+        fileInput.addEventListener('change', handleFileUpload);
+        
+        // Drag and drop handling
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileUpload();
+            }
+        });
+
+        // Sheet selection handling
+        sheetSelect.addEventListener('change', loadSheetData);
+
+        async function handleFileUpload() {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            showStatus('Uploading file...', 'info');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/excel-visual/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentFileId = result.data.file_id;
+                    displayFileInfo(result.data);
+                    loadSheetList();
+                    showStatus('File uploaded successfully!', 'success');
+                } else {
+                    showStatus('Error uploading file: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error uploading file: ' + error.message, 'error');
+            }
+        }
+
+        function displayFileInfo(data) {
+            fileDetails.innerHTML = `
+                <p><strong>File:</strong> ${data.filename}</p>
+                <p><strong>Sheets:</strong> ${data.sheet_names.join(', ')}</p>
+                <p><strong>Size:</strong> ${(data.file_size / 1024).toFixed(2)} KB</p>
+            `;
+            fileInfo.style.display = 'block';
+        }
+
+        async function loadSheetList() {
+            try {
+                const response = await fetch(`/api/excel-visual/excel-info/${currentFileId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    sheetSelect.innerHTML = '<option value="">Choose a sheet...</option>';
+                    result.data.sheet_names.forEach(sheetName => {
+                        const option = document.createElement('option');
+                        option.value = sheetName;
+                        option.textContent = sheetName;
+                        sheetSelect.appendChild(option);
+                    });
+                    sheetSelection.style.display = 'block';
+                }
+            } catch (error) {
+                showStatus('Error loading sheet list: ' + error.message, 'error');
+            }
+        }
+
+        async function loadSheetData() {
+            const sheetName = sheetSelect.value;
+            if (!sheetName || !currentFileId) return;
+
+            showStatus('Loading sheet data...', 'info');
+
+            try {
+                const response = await fetch(`/api/excel-visual/excel-data/${currentFileId}?sheet_name=${encodeURIComponent(sheetName)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    currentSheetData = result.data;
+                    displayExcelTable(result.data);
+                    excelPreview.style.display = 'block';
+                    rangeInputSection.style.display = 'block';
+                    printSettings.style.display = 'block';
+                    actionButtons.style.display = 'flex';
+                    showStatus('Sheet loaded successfully!', 'success');
+                } else {
+                    showStatus('Error loading sheet: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error loading sheet: ' + error.message, 'error');
+            }
+        }
+
+        function displayExcelTable(data) {
+            let html = '<thead><tr><th></th>';
+            
+            // Column headers (A, B, C, ...)
+            for (let col = 0; col < data.max_col; col++) {
+                html += `<th>${columnNumberToLetter(col + 1)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            // Data rows
+            for (let row = 0; row < data.max_row; row++) {
+                html += `<tr><th>${row + 1}</th>`;
+                for (let col = 0; col < data.max_col; col++) {
+                    const cellValue = data.data[row] && data.data[row][col] ? data.data[row][col] : '';
+                    html += `<td data-row="${row + 1}" data-col="${col + 1}" onclick="handleCellClick(this)" onmousedown="handleCellMouseDown(this)" onmouseover="handleCellMouseOver(this)" onmouseup="handleCellMouseUp()">${cellValue}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+
+            excelTable.innerHTML = html;
+        }
+
+        function columnNumberToLetter(num) {
+            let result = '';
+            while (num > 0) {
+                num--;
+                result = String.fromCharCode(65 + (num % 26)) + result;
+                num = Math.floor(num / 26);
+            }
+            return result;
+        }
+
+        function handleCellClick(cell) {
+            if (!isSelecting) {
+                clearSelection();
+                startCell = cell;
+                endCell = cell;
+                updateSelection();
+            }
+        }
+
+        function handleCellMouseDown(cell) {
+            isSelecting = true;
+            startCell = cell;
+            endCell = cell;
+            clearSelection();
+            updateSelection();
+        }
+
+        function handleCellMouseOver(cell) {
+            if (isSelecting) {
+                endCell = cell;
+                updateSelection();
+            }
+        }
+
+        function handleCellMouseUp() {
+            isSelecting = false;
+            if (startCell && endCell) {
+                updateRangeInput();
+                showSelectedRangeInfo();
+            }
+        }
+
+        function updateSelection() {
+            // Clear previous selection
+            document.querySelectorAll('.excel-table td').forEach(cell => {
+                cell.classList.remove('selected', 'in-range');
+            });
+
+            if (!startCell || !endCell) return;
+
+            const startRow = parseInt(startCell.dataset.row);
+            const startCol = parseInt(startCell.dataset.col);
+            const endRow = parseInt(endCell.dataset.row);
+            const endCol = parseInt(endCell.dataset.col);
+
+            const minRow = Math.min(startRow, endRow);
+            const maxRow = Math.max(startRow, endRow);
+            const minCol = Math.min(startCol, endCol);
+            const maxCol = Math.max(startCol, endCol);
+
+            // Highlight selected range
+            for (let row = minRow; row <= maxRow; row++) {
+                for (let col = minCol; col <= maxCol; col++) {
+                    const cell = document.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+                    if (cell) {
+                        cell.classList.add('in-range');
+                    }
+                }
+            }
+
+            // Store selected range
+            selectedRange = {
+                start: { row: minRow, col: minCol },
+                end: { row: maxRow, col: maxCol }
+            };
+        }
+
+        function updateRangeInput() {
+            if (selectedRange) {
+                const startCell = `${columnNumberToLetter(selectedRange.start.col)}${selectedRange.start.row}`;
+                const endCell = `${columnNumberToLetter(selectedRange.end.col)}${selectedRange.end.row}`;
+                rangeInput.value = `${startCell}:${endCell}`;
+            }
+        }
+
+        function showSelectedRangeInfo() {
+            if (selectedRange) {
+                const startCell = `${columnNumberToLetter(selectedRange.start.col)}${selectedRange.start.row}`;
+                const endCell = `${columnNumberToLetter(selectedRange.end.col)}${selectedRange.end.row}`;
+                const rowCount = selectedRange.end.row - selectedRange.start.row + 1;
+                const colCount = selectedRange.end.col - selectedRange.start.col + 1;
+                
+                rangeDetails.innerHTML = `
+                    <p><strong>Range:</strong> ${startCell}:${endCell}</p>
+                    <p><strong>Size:</strong> ${rowCount} rows × ${colCount} columns (${rowCount * colCount} cells)</p>
+                `;
+                selectedRangeInfo.style.display = 'block';
+            }
+        }
+
+        function applyManualRange() {
+            const range = rangeInput.value.trim();
+            if (!range) {
+                showStatus('Please enter a valid range (e.g., A1:D10)', 'error');
+                return;
+            }
+
+            try {
+                const [startCell, endCell] = range.split(':');
+                if (!startCell || !endCell) {
+                    throw new Error('Invalid range format');
+                }
+
+                // Parse start and end cells
+                const startCoords = parseCellAddress(startCell);
+                const endCoords = parseCellAddress(endCell);
+
+                // Update selection
+                selectedRange = {
+                    start: startCoords,
+                    end: endCoords
+                };
+
+                // Visual update
+                clearSelection();
+                highlightRange(selectedRange);
+                showSelectedRangeInfo();
+                showStatus('Range applied successfully!', 'success');
+            } catch (error) {
+                showStatus('Invalid range format. Use format like A1:D10', 'error');
+            }
+        }
+
+        function parseCellAddress(cellAddress) {
+            const match = cellAddress.match(/^([A-Z]+)(\d+)$/);
+            if (!match) {
+                throw new Error('Invalid cell address');
+            }
+
+            const col = letterToColumnNumber(match[1]);
+            const row = parseInt(match[2]);
+
+            return { row, col };
+        }
+
+        function letterToColumnNumber(letters) {
+            let result = 0;
+            for (let i = 0; i < letters.length; i++) {
+                result = result * 26 + (letters.charCodeAt(i) - 64);
+            }
+            return result;
+        }
+
+        function highlightRange(range) {
+            for (let row = range.start.row; row <= range.end.row; row++) {
+                for (let col = range.start.col; col <= range.end.col; col++) {
+                    const cell = document.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+                    if (cell) {
+                        cell.classList.add('in-range');
+                    }
+                }
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.excel-table td').forEach(cell => {
+                cell.classList.remove('selected', 'in-range');
+            });
+            selectedRange = null;
+            startCell = null;
+            endCell = null;
+            rangeInput.value = '';
+            selectedRangeInfo.style.display = 'none';
+        }
+
+        function getPrintSettings() {
+            return {
+                orientation: document.getElementById('orientation').value,
+                paper_size: document.getElementById('paperSize').value,
+                scale: parseInt(document.getElementById('scale').value),
+                top_margin: parseFloat(document.getElementById('topMargin').value),
+                bottom_margin: parseFloat(document.getElementById('bottomMargin').value),
+                left_margin: parseFloat(document.getElementById('leftMargin').value),
+                right_margin: parseFloat(document.getElementById('rightMargin').value),
+                show_gridlines: document.getElementById('showGridlines').checked,
+                show_headings: document.getElementById('showHeadings').checked,
+                header_text: document.getElementById('headerText').value,
+                footer_text: document.getElementById('footerText').value
+            };
+        }
+
+        async function previewPDF() {
+            if (!currentFileId || !sheetSelect.value || !selectedRange) {
+                showStatus('Please select a file, sheet, and range first', 'error');
+                return;
+            }
+
+            const previewBtn = document.getElementById('previewBtn');
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = '<span class="loading"></span>Previewing...';
+
+            try {
+                const requestData = {
+                    file_id: currentFileId,
+                    sheet_name: sheetSelect.value,
+                    cell_range: rangeInput.value,
+                    print_settings: getPrintSettings()
+                };
+
+                const response = await fetch('/api/excel-visual/preview-selected-area', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    previewResult.innerHTML = `
+                        <h4>📋 Preview Results</h4>
+                        <p><strong>Selected Range:</strong> ${rangeInput.value}</p>
+                        <p><strong>Estimated Pages:</strong> ${result.data.estimated_pages}</p>
+                        <p><strong>Print Area:</strong> ${result.data.print_area}</p>
+                        <p><strong>Settings Applied:</strong> ${result.data.settings_applied ? 'Yes' : 'No'}</p>
+                    `;
+                    previewResult.style.display = 'block';
+                    showStatus('Preview generated successfully!', 'success');
+                } else {
+                    showStatus('Error generating preview: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error generating preview: ' + error.message, 'error');
+            } finally {
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = '👁️ Preview PDF Settings';
+            }
+        }
+
+        async function convertToPDF() {
+            if (!currentFileId || !sheetSelect.value || !selectedRange) {
+                showStatus('Please select a file, sheet, and range first', 'error');
+                return;
+            }
+
+            const convertBtn = document.getElementById('convertBtn');
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<span class="loading"></span>Converting...';
+
+            try {
+                const requestData = {
+                    file_id: currentFileId,
+                    sheet_name: sheetSelect.value,
+                    cell_range: rangeInput.value,
+                    print_settings: getPrintSettings()
+                };
+
+                const response = await fetch('/api/excel-visual/convert-selected-area', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Download the PDF
+                    const downloadUrl = `/api/excel-visual/download-pdf/${result.data.pdf_id}`;
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = result.data.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    showStatus('PDF converted and downloaded successfully!', 'success');
+                } else {
+                    showStatus('Error converting to PDF: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error converting to PDF: ' + error.message, 'error');
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '📄 Convert to PDF';
+            }
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+
+            // Auto-hide success and info messages
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Prevent text selection during drag
+        document.addEventListener('selectstart', (e) => {
+            if (isSelecting) {
+                e.preventDefault();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            showStatus('Ready to upload Excel file', 'info');
+        });
+    </script>
+</body>
+</html>
